@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS public.users (
     nickname        TEXT NOT NULL DEFAULT '匿名用户',
     age             INT  NOT NULL DEFAULT 25 CHECK (age >= 0 AND age <= 120),
     roast_enabled   BOOLEAN NOT NULL DEFAULT TRUE,   -- 毒舌模式开关，默认开
+    persona         TEXT NOT NULL DEFAULT 'bro',      -- AI 人设：bro / senpai
     avatar_url      TEXT,
     last_active_at  TIMESTAMPTZ,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -176,6 +177,7 @@ CREATE INDEX idx_feedback_trigger ON public.ai_feedback_logs(trigger_type, creat
 CREATE TABLE IF NOT EXISTS public.weekly_reports (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id         UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    goal_id         UUID NOT NULL REFERENCES public.goals(id) ON DELETE CASCADE,
 
     week_start      DATE NOT NULL,    -- 周一日期
     week_end        DATE NOT NULL,    -- 周日日期
@@ -185,12 +187,13 @@ CREATE TABLE IF NOT EXISTS public.weekly_reports (
     success_count   INT NOT NULL DEFAULT 0,
     fail_count      INT NOT NULL DEFAULT 0,
     max_streak      INT NOT NULL DEFAULT 0,
+    checkins_count  INT NOT NULL DEFAULT 0,   -- 本周实际打卡次数
 
     ai_comment      TEXT,  -- AI 周报点评
 
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    UNIQUE(user_id, week_start)
+    UNIQUE(user_id, goal_id, week_start)
 );
 
 COMMENT ON TABLE  public.weekly_reports IS '7 日报告，每周日预计算生成';
@@ -291,6 +294,7 @@ SELECT
     g.current_streak,
     g.best_streak,
     g.is_active,
+    g.created_at,
     c.id AS checkin_id,
     c.checkin_date,
     c.status AS today_status,
