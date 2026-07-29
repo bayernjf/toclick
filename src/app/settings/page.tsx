@@ -367,6 +367,11 @@ export default function SettingsPage() {
                           当前
                         </span>
                       )}
+                      {p.isPremium && (
+                        <span className="ml-2 text-xs bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 font-normal px-1.5 py-0.5 rounded">
+                          PRO
+                        </span>
+                      )}
                     </p>
                     <p className="text-muted mt-0.5">{p.desc}</p>
                   </div>
