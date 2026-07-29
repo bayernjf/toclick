@@ -27,6 +27,13 @@
 13. **Unit tests** — 41 tests across 3 suites: `validations.test.ts` (19), `rateLimit.test.ts` (9), `persona.test.ts` (13)
 14. **Pre-commit hooks** — husky + lint-staged: eslint → prettier → type-check → vitest on every commit
 
+### Round 4 — UI Polish & Bug Fixes (4 commits)
+
+15. **Dynamic persona** — `AIFeedbackCard` now reads persona from `PERSONA_MAP`; dashboard & report page load user persona from DB and display correct emoji/label
+16. **Editable age** — Settings page age field is now an editable input with validation (1-120 integer); removed redundant `getUser()` calls in `toggleRoast`/`savePersona`/`saveNickname`
+17. **Error boundary** — Wrapped app children with `ErrorBoundary` in `layout.tsx`; added terms/privacy links on login page
+18. **Week navigation** — Report page now supports historical week switching via prev/next arrows, with checkins reloading for the selected week
+
 ## Current Project State
 
 | Layer      | Status                                                |
@@ -40,6 +47,7 @@
 | Security   | RLS + HTTP headers + zod validation + rate limiting   |
 | Tests      | 41 unit tests, 3 suites, all passing                  |
 | CI         | Pre-commit hooks: lint → prettier → type-check → test |
+| UI         | Persona-aware everywhere; age editable; week nav      |
 
 ## Recommended Next Steps
 
@@ -55,13 +63,19 @@
 5. **Dark mode** — System-preference dark theme toggle
 6. **IAP monetization** for premium personas (as planned in README P1)
 
-## Key Files Added This Session
+## Key Files Added/Changed This Session
 
 | File                                | Purpose                               |
 | ----------------------------------- | ------------------------------------- |
 | `src/lib/validations.ts`            | Zod schemas for all API inputs        |
 | `src/lib/rateLimit.ts`              | In-memory sliding window rate limiter |
 | `src/components/ErrorBoundary.tsx`  | React render error fallback           |
+| `src/components/AIFeedbackCard.tsx` | Now persona-aware (emoji + label)     |
+| `src/app/dashboard/page.tsx`        | Loads + passes user persona           |
+| `src/app/report/page.tsx`           | Week navigation + dynamic persona     |
+| `src/app/settings/page.tsx`         | Editable age + fixed getUser() calls  |
+| `src/app/layout.tsx`                | Wrapped with ErrorBoundary            |
+| `src/app/login/page.tsx`            | Terms/privacy links                   |
 | `src/__tests__/validations.test.ts` | 19 validation tests                   |
 | `src/__tests__/rateLimit.test.ts`   | 9 rate limiter tests                  |
 | `src/__tests__/persona.test.ts`     | 13 persona tests                      |
@@ -73,5 +87,5 @@
 ## Branch Status
 
 - Branch: `feature/20260729`
-- Ahead of `origin/feature/20260729` by 33 commits
+- Ahead of `origin/feature/20260729` by 37 commits
 - **Not pushed yet** — `git push` needed
