@@ -19,6 +19,7 @@ const reaction = z.enum(
 
 export const checkinPostSchema = z.object({
   goal_id: uuid,
+  skip: z.boolean().optional(),
 });
 
 export const checkinPatchSchema = z.object({
