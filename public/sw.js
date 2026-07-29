@@ -163,3 +163,52 @@ self.addEventListener("message", (event) => {
     self.skipWaiting();
   }
 });
+
+// ── Push notification handlers ─────────────────────────
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+
+  try {
+    const payload = event.data.json();
+    const { title, body, icon, badge, url } = payload;
+
+    const options = {
+      body: body || "",
+      icon: icon || "/icon-192.png",
+      badge: badge || "/icon-192.png",
+      tag: url || "flagbreaker-push",
+      data: { url: url || "/dashboard" },
+      vibrate: [200, 100, 200],
+      actions: [
+        { action: "open", title: "去看看" },
+      ],
+    };
+
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch (e) {
+    console.warn("[sw] push payload parse error:", e.message);
+  }
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const url = event.notification.data?.url || "/dashboard";
+
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientList) => {
+        // Focus existing tab if any
+        for (const client of clientList) {
+          if (client.url.includes(url) && "focus" in client) {
+            return client.focus();
+          }
+        }
+        // Open new tab
+        if (self.clients.openWindow) {
+          return self.clients.openWindow(url);
+        }
+      })
+  );
+});
