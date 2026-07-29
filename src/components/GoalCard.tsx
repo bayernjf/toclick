@@ -7,10 +7,12 @@ import type { TodayCheckinView } from "@/lib/types";
 type Props = {
   goal: TodayCheckinView;
   onCheckin: (goalId: string) => Promise<void>;
+  onSkip: (goalId: string) => Promise<void>;
 };
 
-export default function GoalCard({ goal, onCheckin }: Props) {
+export default function GoalCard({ goal, onCheckin, onSkip }: Props) {
   const [checkinLoading, setCheckinLoading] = useState(false);
+  const [skipLoading, setSkipLoading] = useState(false);
   const [showFailedFeedback, setShowFailedFeedback] = useState(false);
   const [failedFeedback, setFailedFeedback] = useState<string | null>(null);
   const [failedLoading, setFailedLoading] = useState(false);
@@ -23,6 +25,7 @@ export default function GoalCard({ goal, onCheckin }: Props) {
   const hasCheckedToday = goal.checkin_date === today;
   const isDone = hasCheckedToday && goal.today_status === "success";
   const isFailed = hasCheckedToday && goal.today_status === "failed";
+  const isSkipped = hasCheckedToday && goal.today_status === "skipped";
 
   // 计算距离打卡时间还差多少（仅展示，不阻塞打卡）
   const [hh, mm] = goal.checkin_time.split(":");
@@ -38,6 +41,15 @@ export default function GoalCard({ goal, onCheckin }: Props) {
       await onCheckin(goal.goal_id);
     } finally {
       setCheckinLoading(false);
+    }
+  }
+
+  async function handleSkipClick() {
+    setSkipLoading(true);
+    try {
+      await onSkip(goal.goal_id);
+    } finally {
+      setSkipLoading(false);
     }
   }
 
@@ -95,6 +107,10 @@ export default function GoalCard({ goal, onCheckin }: Props) {
         <div className="h-12 rounded-xl bg-success-500/10 text-success-600 font-medium flex items-center justify-center">
           ✓ 今日已打卡
         </div>
+      ) : isSkipped ? (
+        <div className="h-12 rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 font-medium flex items-center justify-center gap-1">
+          🌴 今天休息中
+        </div>
       ) : isFailed ? (
         <div>
           <button
@@ -143,13 +159,22 @@ export default function GoalCard({ goal, onCheckin }: Props) {
         </div>
       ) : diffMs < -60 * 60 * 1000 ? (
         // 超时超过 1 小时
-        <button
-          onClick={handleCheckinClick}
-          disabled={checkinLoading}
-          className="w-full h-12 rounded-xl bg-warn-500 text-white font-semibold flex items-center justify-center active:opacity-90"
-        >
-          {checkinLoading ? "提交中…" : "⚠ 超时了，赶紧补打"}
-        </button>
+        <div className="space-y-2">
+          <button
+            onClick={handleCheckinClick}
+            disabled={checkinLoading || skipLoading}
+            className="w-full h-12 rounded-xl bg-warn-500 text-white font-semibold flex items-center justify-center active:opacity-90"
+          >
+            {checkinLoading ? "提交中…" : "⚠ 超时了，赶紧补打"}
+          </button>
+          <button
+            onClick={handleSkipClick}
+            disabled={skipLoading || checkinLoading}
+            className="w-full h-9 rounded-xl bg-white dark:bg-ink-100 border border-ink-100 dark:border-ink-200 text-ink-600 text-sm font-medium flex items-center justify-center gap-1 active:bg-ink-50 dark:active:bg-ink-200"
+          >
+            {skipLoading ? "…" : "🌴 今天休息"}
+          </button>
+        </div>
       ) : diffMs > 0 ? (
         <div className="space-y-2">
           <p className="text-muted text-center">
@@ -157,20 +182,36 @@ export default function GoalCard({ goal, onCheckin }: Props) {
           </p>
           <button
             onClick={handleCheckinClick}
-            disabled={checkinLoading}
+            disabled={checkinLoading || skipLoading}
             className="btn-primary"
           >
             {checkinLoading ? "提交中…" : "✓ 提前打了"}
           </button>
+          <button
+            onClick={handleSkipClick}
+            disabled={skipLoading || checkinLoading}
+            className="w-full h-9 rounded-xl bg-white dark:bg-ink-100 border border-ink-100 dark:border-ink-200 text-ink-600 text-sm font-medium flex items-center justify-center gap-1 active:bg-ink-50 dark:active:bg-ink-200"
+          >
+            {skipLoading ? "…" : "🌴 今天休息"}
+          </button>
         </div>
       ) : (
-        <button
-          onClick={handleCheckinClick}
-          disabled={checkinLoading}
-          className="btn-primary"
-        >
-          {checkinLoading ? "提交中…" : "✓ 打了"}
-        </button>
+        <div className="space-y-2">
+          <button
+            onClick={handleCheckinClick}
+            disabled={checkinLoading || skipLoading}
+            className="btn-primary"
+          >
+            {checkinLoading ? "提交中…" : "✓ 打了"}
+          </button>
+          <button
+            onClick={handleSkipClick}
+            disabled={skipLoading || checkinLoading}
+            className="w-full h-9 rounded-xl bg-white dark:bg-ink-100 border border-ink-100 dark:border-ink-200 text-ink-600 text-sm font-medium flex items-center justify-center gap-1 active:bg-ink-50 dark:active:bg-ink-200"
+          >
+            {skipLoading ? "…" : "🌴 今天休息"}
+          </button>
+        </div>
       )}
     </div>
   );
