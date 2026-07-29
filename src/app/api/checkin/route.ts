@@ -2,11 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { generateAiFeedback } from "@/lib/ai/doubao";
 import type { PersonaId } from "@/lib/ai/persona";
-import {
-  GOAL_TYPES,
-  DIFFICULTIES,
-  CLEAN_STREAK_DAYS,
-} from "@/lib/constants";
+import { GOAL_TYPES, DIFFICULTIES, CLEAN_STREAK_DAYS } from "@/lib/constants";
 import type { Goal, User, AiUserState } from "@/lib/types";
 import {
   checkinPostSchema,
@@ -16,17 +12,16 @@ import {
 import { checkRateLimit } from "@/lib/rateLimit";
 
 // POST /api/checkin
-// body: { goal_id: string }
+// body: { goal_id: string, skip?: boolean }
+// skip=true: 标记休息日，不调 AI，不改变连续打卡天数
 // 逻辑：
 //   1. 鉴权
 //   2. 查 goal（确保属于该用户）
 //   3. 校验今天是否已打卡（UNIQUE 约束兜底）
-//   4. 写 checkins（status=success）
-//   5. 更新 goals 冗余字段（current_streak++, best_streak, total_checkins）
+//   4. 如果是 skip: 写 checkins（status=skipped），不更新 streak，不调 AI
+//   5. 如果是正常打卡: 写 checkins（status=success），更新 goals 冗余字段，调 AI
 //   6. 触发洗白：连续达标 7 天清空失败记录
-//   7. 调 AI 生成反馈
-//   8. 写 ai_feedback_logs
-//   9. 返回 feedback + streak + feedback_log_id
+//   7. 返回 feedback + streak + feedback_log_id
 export async function POST(request: Request) {
   const supabase = await createSupabaseServer();
   const {
@@ -41,7 +36,7 @@ export async function POST(request: Request) {
   if (!checkRateLimit(`checkin:${user.id}`, 10, 60_000)) {
     return NextResponse.json(
       { error: "操作太频繁，请稍后再试" },
-      { status: 429 }
+      { status: 429 },
     );
   }
 
@@ -50,7 +45,7 @@ export async function POST(request: Request) {
   if (!parsed.ok) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
-  const { goal_id: goalId } = parsed.data;
+  const { goal_id: goalId, skip } = parsed.data;
 
   // 查 goal
   const { data: goal, error: goalErr } = await supabase
@@ -86,24 +81,57 @@ export async function POST(request: Request) {
     .eq("checkin_date", today)
     .maybeSingle();
 
-  // 如果已是 success，拒绝重复打卡
-  if (existCheckin?.status === "success") {
-    return NextResponse.json(
-      { error: "今天已经打过卡了" },
-      { status: 409 }
-    );
+  // 如果已是 success 或 skipped，拒绝重复
+  if (
+    existCheckin?.status === "success" ||
+    existCheckin?.status === "skipped"
+  ) {
+    return NextResponse.json({ error: "今天已经打过卡了" }, { status: 409 });
+  }
+
+  // ─── 休息日 (skip) 分支 ───────────────────────────
+  if (skip) {
+    const { data: skipCheckin, error: skipErr } = await supabase
+      .from("checkins")
+      .upsert(
+        {
+          goal_id: goalId,
+          user_id: user.id,
+          checkin_date: today,
+          status: "skipped",
+        },
+        { onConflict: "goal_id,checkin_date" },
+      )
+      .select("id")
+      .single();
+
+    if (skipErr) {
+      console.error("[api/checkin] skip insert error:", skipErr);
+      return NextResponse.json({ error: "休息日标记失败" }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      streak: goal.current_streak,
+      skipped: true,
+      checkin_id: skipCheckin?.id ?? null,
+    });
   }
 
   // 写 checkins：如果已有一条 failed 记录则覆盖为 success
-  const { data: updatedCheckin, error: insertErr } = await supabase.from("checkins").upsert(
-    {
-      goal_id: goalId,
-      user_id: user.id,
-      checkin_date: today,
-      status: "success",
-    },
-    { onConflict: "goal_id,checkin_date" }
-  ).select("id").single();
+  const { data: updatedCheckin, error: insertErr } = await supabase
+    .from("checkins")
+    .upsert(
+      {
+        goal_id: goalId,
+        user_id: user.id,
+        checkin_date: today,
+        status: "success",
+      },
+      { onConflict: "goal_id,checkin_date" },
+    )
+    .select("id")
+    .single();
 
   if (insertErr) {
     console.error("[api/checkin] insert checkin error:", insertErr);
@@ -142,7 +170,7 @@ export async function POST(request: Request) {
     goal,
     newStreak,
     isFirstCheckin,
-    cleaned
+    cleaned,
   );
 
   // 调 AI
@@ -231,11 +259,12 @@ function buildScenario(
   goal: Goal,
   streak: number,
   isFirst: boolean,
-  cleaned: boolean
+  cleaned: boolean,
 ): string {
   const label = GOAL_TYPES[goal.goal_type].label;
   if (trigger === "checkin_success") {
-    if (cleaned) return `连续${CLEAN_STREAK_DAYS}天达标，触发洗白，目标：${label}`;
+    if (cleaned)
+      return `连续${CLEAN_STREAK_DAYS}天达标，触发洗白，目标：${label}`;
     if (isFirst) return `第1次${label}打卡成功`;
     if (streak >= 7) return `连续${streak}天${label}打卡成功（里程碑）`;
     if (streak >= 3) return `连续${streak}天${label}打卡成功`;
