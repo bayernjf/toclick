@@ -6,12 +6,15 @@ import { createSupabaseClient } from "@/lib/supabase/client";
 import { PERSONA_MAP, DEFAULT_PERSONA } from "@/lib/ai/persona";
 import type { PersonaId } from "@/lib/ai/persona";
 import Header from "@/components/Header";
+import ThemeToggle from "@/components/ThemeToggle";
 import Toast from "@/components/Toast";
+import { useTheme } from "@/lib/theme";
 import { MINOR_AGE } from "@/lib/constants";
 
 export default function SettingsPage() {
   const router = useRouter();
   const supabase = createSupabaseClient();
+  const { theme, toggleTheme } = useTheme();
 
   const [roastEnabled, setRoastEnabled] = useState(true);
   const [age, setAge] = useState(25);
@@ -273,7 +276,9 @@ export default function SettingsPage() {
                   key={id}
                   onClick={() => savePersona(id)}
                   className={`card w-full text-left flex items-start gap-3 transition-all ${
-                    active ? "border-brand-500 bg-brand-50" : ""
+                    active
+                      ? "border-brand-500 dark:border-brand-400 bg-brand-50"
+                      : ""
                   }`}
                 >
                   <span className="text-2xl pt-0.5">{p.emoji}</span>
@@ -298,6 +303,22 @@ export default function SettingsPage() {
           </div>
         </section>
 
+        {/* 外观 */}
+        <section>
+          <h2 className="text-h2 mb-3">▎外观</h2>
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-body font-medium">深色模式</p>
+                <p className="text-muted mt-1">
+                  当前：{theme === "dark" ? "深色" : "浅色"}
+                </p>
+              </div>
+              <ThemeToggle />
+            </div>
+          </div>
+        </section>
+
         {/* 数据 */}
         <section>
           <h2 className="text-h2 mb-3">▎数据</h2>
@@ -307,7 +328,7 @@ export default function SettingsPage() {
               className="w-full flex items-center justify-between text-body"
             >
               <span>查看历史报告</span>
-              <span className="text-ink-700/40">→</span>
+              <span className="text-ink-700/40 dark:text-ink-300/40">→</span>
             </button>
             <div className="border-t border-ink-100" />
             <button
@@ -315,7 +336,7 @@ export default function SettingsPage() {
               className="w-full flex items-center justify-between text-body text-warn-500"
             >
               <span>清空所有失败记录</span>
-              <span className="text-ink-700/40">→</span>
+              <span className="text-ink-700/40 dark:text-ink-300/40">→</span>
             </button>
           </div>
         </section>
@@ -327,7 +348,7 @@ export default function SettingsPage() {
             <p className="text-muted text-xs leading-relaxed">
               AI 反馈为娱乐性内容，不构成对您的人格评价。
             </p>
-            <div className="border-t border-ink-100 my-2" />
+            <div className="border-t border-ink-100 dark:border-ink-200 my-2" />
             <p className="text-body">心理援助热线：12320</p>
             <p className="text-muted text-xs">全国卫生健康热线，24 小时</p>
           </div>
