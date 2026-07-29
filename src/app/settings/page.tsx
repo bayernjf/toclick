@@ -20,6 +20,8 @@ export default function SettingsPage() {
   const [persona, setPersona] = useState<PersonaId>(DEFAULT_PERSONA);
   const [loading, setLoading] = useState(true);
   const [savingName, setSavingName] = useState(false);
+  const [savingAge, setSavingAge] = useState(false);
+  const [editingAge, setEditingAge] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -52,10 +54,17 @@ export default function SettingsPage() {
   async function saveNickname() {
     if (!nickname.trim() || nickname === originalNickname) return;
     setSavingName(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setSavingName(false);
+      return;
+    }
     const { error } = await supabase
       .from("users")
       .update({ nickname: nickname.trim() })
-      .eq("id", (await supabase.auth.getUser()).data.user?.id!);
+      .eq("id", user.id);
 
     if (error) {
       setToast("保存失败，重试一下");
@@ -74,30 +83,60 @@ export default function SettingsPage() {
     }
     setRoastEnabled(value);
 
-    const { error } = await supabase.auth.getUser();
-    if (error) return;
-    const userId = (await supabase.auth.getUser()).data.user?.id;
-    if (!userId) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
 
     await supabase
       .from("users")
       .update({ roast_enabled: value })
-      .eq("id", userId);
+      .eq("id", user.id);
 
     setToast(value ? "毒舌模式已开，没做到会被损" : "关了，纯夸夸");
   }
 
   async function savePersona(next: PersonaId) {
     setPersona(next);
-    const userId = (await supabase.auth.getUser()).data.user?.id;
-    if (!userId) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
     const { error } = await supabase
       .from("users")
       .update({ persona: next })
-      .eq("id", userId);
+      .eq("id", user.id);
     if (error) {
       setToast("保存失败");
     }
+  }
+
+  async function saveAge() {
+    if (editingAge === null || editingAge === age) return;
+    if (editingAge < 1 || editingAge > 120 || !Number.isInteger(editingAge)) {
+      setToast("请输入有效年龄");
+      return;
+    }
+    setSavingAge(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setSavingAge(false);
+      return;
+    }
+    const { error } = await supabase
+      .from("users")
+      .update({ age: editingAge })
+      .eq("id", user.id);
+    if (error) {
+      setToast("保存失败，重试一下");
+    } else {
+      setAge(editingAge);
+      setEditingAge(null);
+      setToast("年龄已更新");
+    }
+    setSavingAge(false);
   }
 
   async function handleClearRecords() {
@@ -157,7 +196,32 @@ export default function SettingsPage() {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-body">年龄</span>
-              <span className="text-sm text-ink-700/70">{age}</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={editingAge ?? age}
+                  onChange={(e) =>
+                    setEditingAge(parseInt(e.target.value, 10) || 0)
+                  }
+                  onBlur={saveAge}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveAge();
+                    if (e.key === "Escape") setEditingAge(null);
+                  }}
+                  min={1}
+                  max={120}
+                  className="text-right text-sm bg-transparent focus:outline-none w-16"
+                />
+                {editingAge !== null && editingAge !== age && (
+                  <button
+                    onClick={saveAge}
+                    disabled={savingAge}
+                    className="text-xs text-brand-500 font-medium active:text-brand-600"
+                  >
+                    {savingAge ? "保存中…" : "保存"}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
           {age < MINOR_AGE && (
@@ -265,16 +329,12 @@ export default function SettingsPage() {
             </p>
             <div className="border-t border-ink-100 my-2" />
             <p className="text-body">心理援助热线：12320</p>
-            <p className="text-muted text-xs">
-              全国卫生健康热线，24 小时
-            </p>
+            <p className="text-muted text-xs">全国卫生健康热线，24 小时</p>
           </div>
         </section>
       </div>
 
-      {toast && (
-        <Toast message={toast} onClose={() => setToast(null)} />
-      )}
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </main>
   );
 }
