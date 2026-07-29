@@ -175,7 +175,7 @@ export default function ReportPage() {
               <button
                 onClick={() => switchWeek(weekIndex + 1)}
                 disabled={weekIndex >= uniqueWeeks.length - 1}
-                className="text-sm text-ink-600 disabled:opacity-30 active:text-brand-500"
+                className="text-sm text-ink-600 dark:text-ink-400 disabled:opacity-30 active:text-brand-500"
               >
                 ← 上一周
               </button>
@@ -185,7 +185,7 @@ export default function ReportPage() {
               <button
                 onClick={() => switchWeek(weekIndex - 1)}
                 disabled={weekIndex <= 0}
-                className="text-sm text-ink-600 disabled:opacity-30 active:text-brand-500"
+                className="text-sm text-ink-600 dark:text-ink-400 disabled:opacity-30 active:text-brand-500"
               >
                 下一周 →
               </button>
@@ -251,7 +251,7 @@ export default function ReportPage() {
                         {PERSONA_MAP[userPersona]?.emoji ?? "😏"}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-ink-800 mb-1">
+                        <p className="text-sm font-medium text-ink-800 dark:text-ink-200 mb-1">
                           {PERSONA_MAP[userPersona]?.label ?? "损友"}
                         </p>
                         <p className="text-body leading-relaxed whitespace-pre-wrap">
@@ -292,11 +292,13 @@ export default function ReportPage() {
                       <span className="text-muted">
                         {c.checkin_date.slice(5)}
                       </span>
-                      <span className="text-ink-700">{label}</span>
+                      <span className="text-ink-700 dark:text-ink-300">
+                        {label}
+                      </span>
                       <span className={`font-bold ${color}`}>{icon}</span>
                     </div>
                     {c.note && (
-                      <p className="mt-1 ml-8 text-xs text-ink-700/50 italic">
+                      <p className="mt-1 ml-8 text-xs text-ink-700/50 dark:text-ink-300/50 italic">
                         &ldquo;{c.note}&rdquo;
                       </p>
                     )}
@@ -315,7 +317,7 @@ export default function ReportPage() {
               分享给朋友看看
             </button>
             {shareToast && (
-              <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-ink-800 text-white text-xs px-3 py-1 rounded-lg whitespace-nowrap">
+              <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-ink-800 dark:bg-ink-200 text-white text-xs px-3 py-1 rounded-lg whitespace-nowrap">
                 {shareToast}
               </span>
             )}
@@ -326,7 +328,7 @@ export default function ReportPage() {
       <div className="mt-6">
         <Link
           href="/dashboard"
-          className="block text-center text-sm text-ink-700/60"
+          className="block text-center text-sm text-ink-700/60 dark:text-ink-300/60"
         >
           ← 回到今天
         </Link>

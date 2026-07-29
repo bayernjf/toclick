@@ -50,7 +50,7 @@ export default function GoalCard({ goal, onCheckin }: Props) {
     setFailedLoading(true);
     try {
       const resp = await fetch(
-        `/api/ai-feedback?goal_id=${goal.goal_id}&date=${today}`
+        `/api/ai-feedback?goal_id=${goal.goal_id}&date=${today}`,
       );
       const data = await resp.json();
       if (data.ok && data.feedback) {
@@ -85,7 +85,9 @@ export default function GoalCard({ goal, onCheckin }: Props) {
           <p className="text-muted">
             难度：{diff.label} · 连续 {goal.current_streak} 天
           </p>
-          <p className="text-muted">打卡时间：{goal.checkin_time.slice(0, 5)}</p>
+          <p className="text-muted">
+            打卡时间：{goal.checkin_time.slice(0, 5)}
+          </p>
         </div>
       </div>
 
@@ -105,13 +107,17 @@ export default function GoalCard({ goal, onCheckin }: Props) {
             ) : showFailedFeedback ? (
               "✗ 收起损友毒舌 ↑"
             ) : (
-              <>{failedFeedback ? "✗ 再看一遍损友的话" : "✗ 今天没打，看看它怎么说 →"}</>
+              <>
+                {failedFeedback
+                  ? "✗ 再看一遍损友的话"
+                  : "✗ 今天没打，看看它怎么说 →"}
+              </>
             )}
           </button>
 
-          {/* 失败 AI 反馈 */}  
+          {/* 失败 AI 反馈 */}
           {showFailedFeedback && failedFeedback && (
-            <div className="mt-3 p-4 rounded-xl bg-ink-50 border border-ink-100">
+            <div className="mt-3 p-4 rounded-xl bg-ink-50 border border-ink-100 dark:border-ink-200">
               <div className="flex items-start gap-2 mb-3">
                 <span className="text-lg">💬</span>
                 <p className="text-sm text-ink-700 leading-relaxed whitespace-pre-wrap">

@@ -264,13 +264,13 @@ export default function DashboardPage() {
       <nav className="mt-10 flex gap-3">
         <Link
           href="/report"
-          className="flex-1 h-12 rounded-xl bg-white border border-ink-100 flex items-center justify-center text-sm font-medium text-ink-700 active:bg-ink-100"
+          className="flex-1 h-12 rounded-xl bg-white dark:bg-ink-100 border border-ink-100 dark:border-ink-200 flex items-center justify-center text-sm font-medium text-ink-700 active:bg-ink-100 dark:active:bg-ink-200"
         >
           📊 7 日报告
         </Link>
         <Link
           href="/settings"
-          className="flex-1 h-12 rounded-xl bg-white border border-ink-100 flex items-center justify-center text-sm font-medium text-ink-700 active:bg-ink-100"
+          className="flex-1 h-12 rounded-xl bg-white dark:bg-ink-100 border border-ink-100 dark:border-ink-200 flex items-center justify-center text-sm font-medium text-ink-700 active:bg-ink-100 dark:active:bg-ink-200"
         >
           ⚙️ 设置
         </Link>

@@ -82,7 +82,7 @@ export default function AIFeedbackCard({
                 placeholder="写句感想？（打鸡血专用）"
                 maxLength={200}
                 disabled={noteSaved}
-                className="flex-1 h-11 px-4 rounded-xl bg-white border border-ink-100 text-sm text-ink-700 placeholder:text-ink-700/30 focus:outline-none focus:border-brand-300 disabled:bg-ink-50 disabled:text-ink-700/50"
+                className="flex-1 h-11 px-4 rounded-xl bg-white dark:bg-ink-100 border border-ink-100 dark:border-ink-200 text-sm text-ink-700 placeholder:text-ink-700/30 dark:placeholder:text-ink-300/30 focus:outline-none focus:border-brand-300 disabled:bg-ink-50 disabled:text-ink-700/50"
               />
               {!noteSaved && note.trim() && (
                 <button
@@ -109,7 +109,7 @@ export default function AIFeedbackCard({
             className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl transition-colors ${
               reacted === "liked"
                 ? "bg-success-500/20"
-                : "bg-white border border-ink-100 active:bg-ink-100"
+                : "bg-white dark:bg-ink-100 border border-ink-100 dark:border-ink-200 active:bg-ink-100 dark:active:bg-ink-200"
             }`}
           >
             😂
@@ -119,7 +119,7 @@ export default function AIFeedbackCard({
             className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl transition-colors ${
               reacted === "disliked"
                 ? "bg-warn-500/20"
-                : "bg-white border border-ink-100 active:bg-ink-100"
+                : "bg-white dark:bg-ink-100 border border-ink-100 dark:border-ink-200 active:bg-ink-100 dark:active:bg-ink-200"
             }`}
           >
             👎

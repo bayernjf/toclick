@@ -22,7 +22,7 @@ export default function OfflineBanner() {
   if (!offline) return null;
 
   return (
-    <div className="bg-ink-700 text-white text-xs text-center py-1.5 font-medium">
+    <div className="bg-ink-700 dark:bg-ink-300 text-white text-xs text-center py-1.5 font-medium">
       ⚡️ 当前离线 · 操作将在联网后自动提交
     </div>
   );

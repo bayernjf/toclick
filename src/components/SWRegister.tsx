@@ -10,7 +10,8 @@ export default function SWRegister() {
   const [updateReady, setUpdateReady] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    if (typeof window === "undefined" || !("serviceWorker" in navigator))
+      return;
 
     let refreshing = false;
 
@@ -29,7 +30,10 @@ export default function SWRegister() {
           const installing = reg.installing;
           if (!installing) return;
           installing.addEventListener("statechange", () => {
-            if (installing.state === "installed" && navigator.serviceWorker.controller) {
+            if (
+              installing.state === "installed" &&
+              navigator.serviceWorker.controller
+            ) {
               // 新 SW 安装完毕，等待激活
               setUpdateReady(true);
             }
@@ -68,7 +72,7 @@ export default function SWRegister() {
       <span>📦 新版本就绪</span>
       <button
         onClick={handleUpdate}
-        className="ml-3 bg-white text-brand-600 px-3 py-1 rounded-lg text-xs font-bold active:opacity-80"
+        className="ml-3 bg-white dark:bg-ink-100 text-brand-600 dark:text-brand-400 px-3 py-1 rounded-lg text-xs font-bold active:opacity-80"
       >
         刷新
       </button>
