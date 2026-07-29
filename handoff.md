@@ -41,6 +41,31 @@
 21. **FOUC prevention** — Inline script in `<head>` applies `dark` class before first paint. Dynamic `themeColor` for PWA manifest.
 22. **Component dark adaptation** — Applied `dark:` variants to all components: Toast, OfflineBanner, AIFeedbackCard, GoalCard, ErrorBoundary, and all pages (login, new goal, dashboard, report, settings). Cards use `dark:bg-ink-100`; borders use `dark:border-ink-200/300`; special backgrounds (Toasts) maintain dark overlay semantics.
 
+### Round 6 — E2E Tests with Playwright (10 commits)
+
+23. **Dependencies** — Added Playwright as dev dependency. Updated `vitest.config.ts` to exclude `e2e/` directory.
+24. **Playwright config** — `playwright.config.ts` with Next.js dev server integration (`webServer`), `chromium` project, and base URL `http://localhost:3000`.
+25. **Mock infrastructure** — `e2e/fixtures/mock-server.ts` provides a mock Supabase server that intercepts client-side Supabase calls. `e2e/fixtures/mocks.ts` defines mock API route handlers and test data (user, goals, checkins, weekly reports).
+26. **Landing page tests** — Covers unauthenticated landing page: hero section, CTA button, navigation links.
+27. **Login page tests** — Covers email magic link flow: input validation, submit button state, success/error UI.
+28. **Dashboard tests** — Covers authenticated dashboard: today's goals list, checkin toggle, AI feedback card, empty states.
+29. **Goal creation tests** — Covers goal creation form: field validation, persona selection, submit flow, success redirect.
+30. **Weekly report tests** — Covers report page: week display, prev/next navigation, persona-aware feedback, empty state.
+31. **Settings page tests** — Covers settings: nickname edit, age edit, persona switch, theme toggle, danger zone.
+32. **Build info** — Updated `tsconfig.tsbuildinfo`.
+
+### Round 7 — Feature Completion (26 commits)
+
+33. **Goal edit & delete** — Created `/goals/[id]/edit` page (reuses 3-step wizard, prefilled). Added `PATCH`+`DELETE` `/api/goals/[id]` with ownership checks. Goals section in settings page shows active goals with edit links and emoji/streak preview. Soft-delete via `is_active = false`.
+34. **Rest day (Skip)** — Added `skip` boolean to checkin POST schema. `POST /api/checkin` with `skip: true` creates `status: "skipped"` record (no AI, no streak change). GoalCard shows "🌴 今天休息" button in all pre-checkin states and `isSkipped` display state.
+35. **CSP security header** — Full `Content-Security-Policy` in `next.config.js` covering scripts, styles, images, fonts, connect-src for Supabase + Ark API + Sentry.
+36. **Sentry error monitoring** — Installed `@sentry/nextjs` v10. Client/server/edge configs with conditional init (only when `SENTRY_DSN` set). `src/instrumentation.ts` hook. `global-error.tsx` with reset UI and Sentry reporting. `next.config.js` wrapped with `withSentryConfig` (env-driven).
+37. **E2E in CI** — GitHub Actions workflow `.github/workflows/e2e.yml`: triggers on push/PR to main/develop, runs `npm ci` → `playwright install` → `playwright test`, uploads artifacts on failure.
+38. **Push notifications** — Database table `push_subscriptions` with RLS. `web-push` server-side broadcast utility. Subscribe/unsubscribe API routes. `usePush` client hook with VAPID key handling. Service worker push/notificationclick handlers. Settings page push toggle (switch UI). Cron job sends push notification when goal marked as failed, cleans stale subscriptions.
+39. **Screenshot sharing** — `html-to-image` captures AIFeedbackCard as PNG. Share button in feedback modal: tries Web Share API (mobile, with file), falls back to download. Dark mode background matches card.
+40. **OG image** — `/api/og` route using `@vercel/og` (`ImageResponse`) with gradient branding. Open Graph + Twitter Card metadata in layout with dynamic OG image URL.
+41. **IAP foundation** — `PersonaMeta` type with `isPremium: boolean`. `PRO` badge in persona selector. `/api/iap/products` API (placeholder for Stripe/RevenueCat integration).
+
 ## Dark Mode Architecture
 
 | Mechanism         | Detail                                                                                |
@@ -54,61 +79,82 @@
 
 ## Current Project State
 
-| Layer      | Status                                                |
-| ---------- | ----------------------------------------------------- |
-| TypeScript | Strict mode, compiles clean                           |
-| Schema     | Synced with all 3 migrations                          |
-| Auth       | Supabase email magic link                             |
-| AI         | Doubao API with dual persona (bro + senpai)           |
-| PWA        | Service worker + offline checkin queue                |
-| Cron       | Weekly reports + failed checkin auto-mark             |
-| Security   | RLS + HTTP headers + zod validation + rate limiting   |
-| Tests      | 41 unit tests, 3 suites, all passing                  |
-| CI         | Pre-commit hooks: lint → prettier → type-check → test |
-| UI         | Persona-aware, age editable, week nav, dark mode      |
+| Layer      | Status                                                                |
+| ---------- | --------------------------------------------------------------------- |
+| TypeScript | Strict mode, compiles clean                                           |
+| Schema     | Synced with all 4 migrations (incl. push_subscriptions)               |
+| Auth       | Supabase email magic link                                             |
+| AI         | Doubao API with dual persona (bro + senpai), premium flag added       |
+| PWA        | Service worker + offline checkin queue + push notifications           |
+| Cron       | Weekly reports + failed checkin auto-mark + push notification trigger |
+| Security   | RLS + CSP + HTTP headers + zod validation + rate limiting             |
+| Monitoring | Sentry error tracking (env-driven)                                    |
+| CI/CD      | Pre-commit hooks + GitHub Actions E2E workflow                        |
+| Tests      | 41 unit tests (3 suites) + 6 E2E specs (Playwright), all passing      |
+| UI         | Persona-aware, age editable, goal edit/delete, dark mode, push toggle |
 
 ## Recommended Next Steps
 
-### High-Impact
+### Next Priorities
 
-1. **E2E tests with Playwright** — core flow: register → create goal → checkin → AI feedback
-2. **CSP header** — `Content-Security-Policy` in `next.config.js` (inline scripts need hashes)
-3. **Error monitoring** — Sentry or similar for production crash tracking
-
-### Medium Effort
-
-4. **Social sharing image** — Open Graph image for share cards
-5. **IAP monetization** for premium personas (as planned in README P1)
+1. **Wire IAP to payment provider** — Connect `/api/iap` to Stripe/RevenueCat, implement purchase flow, unlock premium personas
+2. **Voice support** — TTS audio feedback for AI responses (as planned in README P1)
+3. **Friend peer roasting** — Multi-user social accountability (as planned in README P1)
+4. **Per-goal checkin reminders** — Individual cron schedules per goal's checkin time
+5. **Goal completion/congratulations** — Milestone celebration when best_streak hits certain thresholds
 
 ## Key Files Added/Changed This Session
 
-| File                                | Purpose                                  |
-| ----------------------------------- | ---------------------------------------- |
-| `src/lib/validations.ts`            | Zod schemas for all API inputs           |
-| `src/lib/rateLimit.ts`              | In-memory sliding window rate limiter    |
-| `src/lib/theme.ts`                  | useTheme hook: dark/light persistence    |
-| `src/components/ErrorBoundary.tsx`  | React render error fallback              |
-| `src/components/ThemeToggle.tsx`    | Dark mode toggle button                  |
-| `src/components/AIFeedbackCard.tsx` | Now persona-aware + dark mode            |
-| `src/components/GoalCard.tsx`       | Dark mode border variants                |
-| `src/components/Toast.tsx`          | Dark mode bg for overlay                 |
-| `src/app/dashboard/page.tsx`        | Loads + passes user persona + dark       |
-| `src/app/report/page.tsx`           | Week navigation + dynamic persona        |
-| `src/app/settings/page.tsx`         | Editable age + theme toggle              |
-| `src/app/layout.tsx`                | ErrorBoundary + FOUC script + themeColor |
-| `src/app/login/page.tsx`            | Terms/privacy links + dark mode          |
-| `tailwind.config.js`                | darkMode:class + CSS var colors          |
-| `src/app/globals.css`               | CSS variables + card/button utilities    |
-| `src/__tests__/validations.test.ts` | 19 validation tests                      |
-| `src/__tests__/rateLimit.test.ts`   | 9 rate limiter tests                     |
-| `src/__tests__/persona.test.ts`     | 13 persona tests                         |
-| `vitest.config.ts`                  | Vitest configuration                     |
-| `.husky/pre-commit`                 | Pre-commit hook pipeline                 |
-| `AGENTS.md`                         | AI coding agent project guidance         |
-| `handoff.md`                        | This handoff document                    |
+| File                                    | Purpose                                  |
+| --------------------------------------- | ---------------------------------------- |
+| `src/lib/validations.ts`                | Zod schemas for all API inputs           |
+| `src/lib/rateLimit.ts`                  | In-memory sliding window rate limiter    |
+| `src/lib/theme.ts`                      | useTheme hook: dark/light persistence    |
+| `src/components/ErrorBoundary.tsx`      | React render error fallback              |
+| `src/components/ThemeToggle.tsx`        | Dark mode toggle button                  |
+| `src/components/AIFeedbackCard.tsx`     | Now persona-aware + dark mode            |
+| `src/components/GoalCard.tsx`           | Dark mode border variants                |
+| `src/components/Toast.tsx`              | Dark mode bg for overlay                 |
+| `src/app/dashboard/page.tsx`            | Loads + passes user persona + dark       |
+| `src/app/report/page.tsx`               | Week navigation + dynamic persona        |
+| `src/app/settings/page.tsx`             | Editable age + theme toggle              |
+| `src/app/layout.tsx`                    | ErrorBoundary + FOUC script + themeColor |
+| `src/app/login/page.tsx`                | Terms/privacy links + dark mode          |
+| `tailwind.config.js`                    | darkMode:class + CSS var colors          |
+| `src/app/globals.css`                   | CSS variables + card/button utilities    |
+| `src/__tests__/validations.test.ts`     | 19 validation tests                      |
+| `src/__tests__/rateLimit.test.ts`       | 9 rate limiter tests                     |
+| `src/__tests__/persona.test.ts`         | 13 persona tests                         |
+| `vitest.config.ts`                      | Vitest config (excludes e2e/)            |
+| `.husky/pre-commit`                     | Pre-commit hook pipeline                 |
+| `playwright.config.ts`                  | Playwright E2E config                    |
+| `e2e/fixtures/mock-server.ts`           | Mock Supabase server for E2E             |
+| `e2e/fixtures/mocks.ts`                 | Mock API handlers + test data            |
+| `e2e/landing.spec.ts`                   | Landing page E2E tests                   |
+| `e2e/login.spec.ts`                     | Login page E2E tests                     |
+| `e2e/dashboard.spec.ts`                 | Dashboard E2E tests                      |
+| `e2e/goals.spec.ts`                     | Goal creation E2E tests                  |
+| `e2e/report.spec.ts`                    | Weekly report E2E tests                  |
+| `e2e/settings.spec.ts`                  | Settings page E2E tests                  |
+| `src/app/goals/[id]/edit/page.tsx`      | Goal edit & delete UI                    |
+| `src/app/api/goals/[id]/route.ts`       | Goal update (PATCH) & soft-delete        |
+| `src/lib/usePush.ts`                    | Push subscription hook with VAPID        |
+| `src/lib/push.ts`                       | Server-side web-push broadcast           |
+| `src/app/api/push/subscribe/route.ts`   | Push subscription API                    |
+| `src/app/api/og/route.tsx`              | OG image generation via @vercel/og       |
+| `src/app/api/iap/products/route.ts`     | IAP products list (placeholder)          |
+| `src/instrumentation.ts`                | Sentry instrumentation hook              |
+| `src/app/global-error.tsx`              | Global error UI with Sentry reporting    |
+| `sentry.client.config.ts`               | Sentry client-side config                |
+| `sentry.server.config.ts`               | Sentry server-side config                |
+| `sentry.edge.config.ts`                 | Sentry edge runtime config               |
+| `.github/workflows/e2e.yml`             | GitHub Actions E2E CI                    |
+| `migrations/004_push_subscriptions.sql` | Push subscriptions table migration       |
+| `AGENTS.md`                             | AI coding agent project guidance         |
+| `handoff.md`                            | This handoff document                    |
 
 ## Branch Status
 
 - Branch: `feature/20260729`
-- Ahead of `origin/feature/20260729` by 41 commits
+- Ahead of `origin/feature/20260729` by 77 commits
 - **Not pushed yet** — `git push` needed
