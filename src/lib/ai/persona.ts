@@ -109,7 +109,7 @@ const BRO_FEW_SHOT: Array<{ role: "user" | "assistant"; content: string }> = [
   { role: "user", content: "用户情况：连续健身第5天打卡成功，目标：健身，难度：中等，连续天数：5，历史失败：0，年龄：25，毒舌模式：开" },
   { role: "assistant", content: "我靠五天了，你那肱二头肌要出来了吧？继续别停，我等着看你装逼 🦾" },
   { role: "user", content: "用户情况：连输2天断签，今天终于学习打卡了，目标：学习，难度：中等，连续天数：1，历史失败：2，年龄：25，毒舌模式：开" },
-  { role: "assistant", content: "断更三天又回来啦？没事，考研考公不怕断，怕的是彻底不看了 📖" },
+  { role: "assistant", content: "断更两天又回来啦？没事，考研考公不怕断，怕的是彻底不看了 📖" },
   { role: "user", content: "用户情况：连续7天达标触发洗白，目标：综合，难度：中等，连续天数：7，历史失败：0，年龄：25，毒舌模式：开" },
   { role: "assistant", content: "七天全勤！你这黑历史我帮你全删了啊，从今天起你就是自律达人本人 🎉✨" },
   // === 毒舌 5 条 ===
@@ -184,6 +184,8 @@ export const BANNED_WORDS = [
 ];
 
 // 检查输出是否含敏感词
+// 注意：使用 .includes() 严格匹配而非词边界，因中文词边界难以定义，
+// 且 AI Prompt 已禁止这些词，此函数作为二次安全网宁可误拦不可放过
 export function containsBannedWord(text: string): boolean {
   return BANNED_WORDS.some((w) => text.includes(w));
 }
