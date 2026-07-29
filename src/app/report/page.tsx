@@ -6,6 +6,8 @@ import Link from "next/link";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import Header from "@/components/Header";
 import { GOAL_TYPES } from "@/lib/constants";
+import { DEFAULT_PERSONA, PERSONA_MAP } from "@/lib/ai/persona";
+import type { PersonaId } from "@/lib/ai/persona";
 import type { WeeklyReport, Checkin, Goal } from "@/lib/types";
 
 export default function ReportPage() {
@@ -14,9 +16,14 @@ export default function ReportPage() {
 
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState<WeeklyReport[]>([]);
+  /** All reports across all weeks (for week navigation) */
+  const [allReports, setAllReports] = useState<WeeklyReport[]>([]);
   const [recentCheckins, setRecentCheckins] = useState<Checkin[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [shareToast, setShareToast] = useState<string | null>(null);
+  const [userPersona, setUserPersona] = useState<PersonaId>(DEFAULT_PERSONA);
+  /** Index of the currently displayed week (0 = latest) */
+  const [weekIndex, setWeekIndex] = useState(0);
 
   useEffect(() => {
     async function load() {
@@ -28,31 +35,41 @@ export default function ReportPage() {
         return;
       }
 
-      // 取最近一周的所有目标独立报告
+      // 加载用户人设
+      const { data: usr } = await supabase
+        .from("users")
+        .select("persona")
+        .single();
+      if (usr?.persona) setUserPersona(usr.persona as PersonaId);
+
+      // 取最近所有周的独立报告
       const { data: rep } = await supabase
         .from("weekly_reports")
         .select("*")
         .eq("user_id", user.id)
         .order("week_start", { ascending: false })
-        .limit(10)
+        .limit(50)
         .returns<WeeklyReport[]>();
 
-      // 只保留最新 week_start 的那批报告
-      const latestWeek = rep?.[0]?.week_start;
-      const latestReports = (rep ?? []).filter(
-        (r) => r.week_start === latestWeek
-      );
+      const all = rep ?? [];
+      setAllReports(all);
 
-      setReports(latestReports);
+      // 按唯一 week_start 分组，用于周导航
+      const latestWeek = all[0]?.week_start;
+      const currentWeekReports = all.filter((r) => r.week_start === latestWeek);
+      setReports(currentWeekReports);
 
-      // 取最近 7 天打卡明细
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      // 取最近 7 天打卡明细（默认最新周）
+      const endDate = all[0]?.week_end ?? new Date().toISOString().slice(0, 10);
+      const startDate =
+        all[0]?.week_start ??
+        new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
       const { data: chk } = await supabase
         .from("checkins")
         .select("*")
         .eq("user_id", user.id)
-        .gte("checkin_date", sevenDaysAgo.toISOString().slice(0, 10))
+        .gte("checkin_date", startDate)
+        .lte("checkin_date", endDate)
         .order("checkin_date", { ascending: true })
         .returns<Checkin[]>();
 
@@ -75,11 +92,40 @@ export default function ReportPage() {
   const totalSuccess = reports.reduce((s, r) => s + r.success_count, 0);
   const totalFail = reports.reduce((s, r) => s + r.fail_count, 0);
   const totalExpected = reports.reduce((s, r) => s + r.expected_checks, 0);
-  const avgMaxStreak = reports.length > 0
-    ? Math.round(reports.reduce((s, r) => s + r.max_streak, 0) / reports.length)
-    : 0;
+  const avgMaxStreak =
+    reports.length > 0
+      ? Math.round(
+          reports.reduce((s, r) => s + r.max_streak, 0) / reports.length,
+        )
+      : 0;
 
   const goalMap = new Map(goals.map((g) => [g.id, g]));
+
+  // 提取所有唯一 week_start，用于周导航
+  const uniqueWeeks = [...new Set(allReports.map((r) => r.week_start))];
+
+  // 周切换：重新加载目标周的打卡明细
+  function switchWeek(index: number) {
+    if (index < 0 || index >= uniqueWeeks.length) return;
+    setWeekIndex(index);
+    const week = uniqueWeeks[index];
+    const weekReports = allReports.filter((r) => r.week_start === week);
+    setReports(weekReports);
+    // 异步加载该周的打卡记录
+    loadCheckinsForWeek(week, weekReports[0]?.week_end ?? week);
+  }
+
+  async function loadCheckinsForWeek(start: string, end: string) {
+    const { data: chk } = await supabase
+      .from("checkins")
+      .select("*")
+      .eq("user_id", (await supabase.auth.getUser()).data.user?.id!)
+      .gte("checkin_date", start)
+      .lte("checkin_date", end)
+      .order("checkin_date", { ascending: true })
+      .returns<Checkin[]>();
+    setRecentCheckins(chk ?? []);
+  }
 
   // 分享
   async function handleShare() {
@@ -123,10 +169,33 @@ export default function ReportPage() {
         </div>
       ) : (
         <div className="mt-6 space-y-6">
-          {/* 时间范围 */}
-          <p className="text-muted">
-            {reports[0].week_start} ~ {reports[0].week_end}
-          </p>
+          {/* 周选择器 */}
+          {uniqueWeeks.length > 1 && (
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => switchWeek(weekIndex + 1)}
+                disabled={weekIndex >= uniqueWeeks.length - 1}
+                className="text-sm text-ink-600 disabled:opacity-30 active:text-brand-500"
+              >
+                ← 上一周
+              </button>
+              <p className="text-muted">
+                {reports[0].week_start} ~ {reports[0].week_end}
+              </p>
+              <button
+                onClick={() => switchWeek(weekIndex - 1)}
+                disabled={weekIndex <= 0}
+                className="text-sm text-ink-600 disabled:opacity-30 active:text-brand-500"
+              >
+                下一周 →
+              </button>
+            </div>
+          )}
+          {uniqueWeeks.length <= 1 && (
+            <p className="text-muted">
+              {reports[0].week_start} ~ {reports[0].week_end}
+            </p>
+          )}
 
           {/* 总战绩 */}
           <section>
@@ -155,9 +224,7 @@ export default function ReportPage() {
               </div>
               <div className="card text-center">
                 <p className="text-muted">失败次数</p>
-                <p className="text-xl font-bold text-warn-500">
-                  {totalFail}
-                </p>
+                <p className="text-xl font-bold text-warn-500">{totalFail}</p>
               </div>
             </div>
           </section>
@@ -173,19 +240,19 @@ export default function ReportPage() {
                 </h2>
                 <div className="card text-center py-4">
                   <p className="font-semibold text-brand-500">
-                    完成 {report.success_count}/{report.expected_checks} · 最长连续{" "}
-                    {report.max_streak} 天
+                    完成 {report.success_count}/{report.expected_checks} ·
+                    最长连续 {report.max_streak} 天
                   </p>
                 </div>
                 {report.ai_comment && (
                   <div className="card-ai mt-3">
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-full bg-brand-200 flex items-center justify-center text-xl shrink-0">
-                        😏
+                        {PERSONA_MAP[userPersona]?.emoji ?? "😏"}
                       </div>
                       <div>
                         <p className="text-sm font-medium text-ink-800 mb-1">
-                          损友
+                          {PERSONA_MAP[userPersona]?.label ?? "损友"}
                         </p>
                         <p className="text-body leading-relaxed whitespace-pre-wrap">
                           {report.ai_comment}
@@ -211,14 +278,14 @@ export default function ReportPage() {
                   c.status === "success"
                     ? "✓"
                     : c.status === "failed"
-                    ? "✗"
-                    : "—";
+                      ? "✗"
+                      : "—";
                 const color =
                   c.status === "success"
                     ? "text-success-500"
                     : c.status === "failed"
-                    ? "text-warn-500"
-                    : "text-ink-700/40";
+                      ? "text-warn-500"
+                      : "text-ink-700/40";
                 return (
                   <div key={c.id}>
                     <div className="flex items-center justify-between text-sm">
@@ -237,9 +304,7 @@ export default function ReportPage() {
                 );
               })}
               {recentCheckins.length === 0 && (
-                <p className="text-muted text-center py-4">
-                  这周没打卡记录
-                </p>
+                <p className="text-muted text-center py-4">这周没打卡记录</p>
               )}
             </div>
           </section>
