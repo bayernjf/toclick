@@ -8,6 +8,11 @@ import {
   CLEAN_STREAK_DAYS,
 } from "@/lib/constants";
 import type { Goal, User, AiUserState } from "@/lib/types";
+import {
+  checkinPostSchema,
+  checkinPatchSchema,
+  parseBody,
+} from "@/lib/validations";
 
 // POST /api/checkin
 // body: { goal_id: string }
@@ -31,11 +36,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "未登录" }, { status: 401 });
   }
 
-  const body = await request.json().catch(() => ({}));
-  const goalId = body?.goal_id;
-  if (!goalId) {
-    return NextResponse.json({ error: "缺少 goal_id" }, { status: 400 });
+  const rawBody = await request.json().catch(() => null);
+  const parsed = parseBody(checkinPostSchema, rawBody);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
+  const { goal_id: goalId } = parsed.data;
 
   // 查 goal
   const { data: goal, error: goalErr } = await supabase
@@ -190,17 +196,16 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "未登录" }, { status: 401 });
   }
 
-  const body = await request.json().catch(() => ({}));
-  const checkinId = body?.checkin_id;
-  const note = body?.note;
-
-  if (!checkinId || typeof note !== "string") {
-    return NextResponse.json({ error: "缺少参数" }, { status: 400 });
+  const rawBody = await request.json().catch(() => null);
+  const parsed = parseBody(checkinPatchSchema, rawBody);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
+  const { checkin_id: checkinId, note } = parsed.data;
 
   const { error } = await supabase
     .from("checkins")
-    .update({ note: note.slice(0, 200) })
+    .update({ note })
     .eq("id", checkinId)
     .eq("user_id", user.id);
 

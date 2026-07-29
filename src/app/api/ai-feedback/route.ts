@@ -4,6 +4,12 @@ import { generateAiFeedback } from "@/lib/ai/doubao";
 import type { PersonaId } from "@/lib/ai/persona";
 import { GOAL_TYPES } from "@/lib/constants";
 import type { Goal, User, AiUserState } from "@/lib/types";
+import {
+  aiFeedbackGetSchema,
+  aiFeedbackPatchSchema,
+  parseBody,
+  parseQuery,
+} from "@/lib/validations";
 
 // GET /api/ai-feedback?goal_id=xxx&date=2026-07-29
 // 获取某目标在某日期的 AI 反馈（优先查日志，无则实时生成）
@@ -16,13 +22,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "未登录" }, { status: 401 });
   }
 
-  const { searchParams } = new URL(request.url);
-  const goalId = searchParams.get("goal_id");
-  const date = searchParams.get("date");
-
-  if (!goalId || !date) {
-    return NextResponse.json({ error: "缺少参数" }, { status: 400 });
+  const parsed = parseQuery(aiFeedbackGetSchema, request.url);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
+  const { goal_id: goalId, date } = parsed.data;
 
   // 先查日志（已由 cron 预生成的反馈）
   const { data: existing } = await supabase
@@ -131,22 +135,12 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "未登录" }, { status: 401 });
   }
 
-  const body = await request.json().catch(() => ({}));
-  const { feedback_log_id, reaction } = body;
-
-  if (!feedback_log_id || !reaction) {
-    return NextResponse.json(
-      { error: "缺少参数" },
-      { status: 400 }
-    );
+  const rawBody = await request.json().catch(() => null);
+  const parsed = parseBody(aiFeedbackPatchSchema, rawBody);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
-
-  if (reaction !== "liked" && reaction !== "disliked") {
-    return NextResponse.json(
-      { error: "reaction 只能是 liked 或 disliked" },
-      { status: 400 }
-    );
-  }
+  const { feedback_log_id, reaction } = parsed.data;
 
   const { error } = await supabase
     .from("ai_feedback_logs")

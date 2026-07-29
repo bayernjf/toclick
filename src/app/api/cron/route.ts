@@ -7,6 +7,7 @@ import {
   PROTECTION_MODE_THRESHOLD,
 } from "@/lib/constants";
 import type { Goal, User, AiUserState } from "@/lib/types";
+import { cronPostSchema, parseBody } from "@/lib/validations";
 
 // POST /api/cron
 // 由 Supabase pg_cron / Vercel Cron / 外部定时任务 调用
@@ -14,9 +15,14 @@ import type { Goal, User, AiUserState } from "@/lib/types";
 // Body: { secret: string } — 需匹配 CRON_SECRET 环境变量
 export async function POST(request: Request) {
   // 1. 鉴权
-  const body = await request.json().catch(() => ({}));
+  const rawBody = await request.json().catch(() => null);
+  const parsed = parseBody(cronPostSchema, rawBody);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
   const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || body.secret !== cronSecret) {
+  if (!cronSecret || parsed.data.secret !== cronSecret) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
