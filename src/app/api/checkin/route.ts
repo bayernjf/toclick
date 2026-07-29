@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { generateAiFeedback } from "@/lib/ai/doubao";
+import type { PersonaId } from "@/lib/ai/persona";
 import {
   GOAL_TYPES,
   DIFFICULTIES,
@@ -70,20 +71,24 @@ export async function POST(request: Request) {
     .eq("checkin_date", today)
     .maybeSingle();
 
-  if (existCheckin) {
+  // 如果已是 success，拒绝重复打卡
+  if (existCheckin?.status === "success") {
     return NextResponse.json(
       { error: "今天已经打过卡了" },
       { status: 409 }
     );
   }
 
-  // 写 checkins
-  const { error: insertErr } = await supabase.from("checkins").insert({
-    goal_id: goalId,
-    user_id: user.id,
-    checkin_date: today,
-    status: "success",
-  });
+  // 写 checkins：如果已有一条 failed 记录则覆盖为 success
+  const { data: updatedCheckin, error: insertErr } = await supabase.from("checkins").upsert(
+    {
+      goal_id: goalId,
+      user_id: user.id,
+      checkin_date: today,
+      status: "success",
+    },
+    { onConflict: "goal_id,checkin_date" }
+  ).select("id").single();
 
   if (insertErr) {
     console.error("[api/checkin] insert checkin error:", insertErr);
@@ -136,7 +141,8 @@ export async function POST(request: Request) {
     roast_enabled: profile.roast_enabled,
   };
 
-  const ai = await generateAiFeedback(aiState);
+  const persona: PersonaId = (profile.persona as PersonaId) ?? "bro";
+  const ai = await generateAiFeedback(aiState, persona);
 
   // 写 ai_feedback_logs
   let feedbackLogId: string | null = null;
@@ -164,10 +170,45 @@ export async function POST(request: Request) {
     ok: true,
     streak: newStreak,
     cleaned,
+    checkin_id: updatedCheckin?.id ?? null,
     feedback: ai.ok ? ai.text : null,
     feedback_log_id: feedbackLogId,
     ai_error: ai.ok ? null : ai.error,
   });
+}
+
+// PATCH /api/checkin
+// body: { checkin_id: string, note: string }
+// 更新打卡感想
+export async function PATCH(request: Request) {
+  const supabase = await createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "未登录" }, { status: 401 });
+  }
+
+  const body = await request.json().catch(() => ({}));
+  const checkinId = body?.checkin_id;
+  const note = body?.note;
+
+  if (!checkinId || typeof note !== "string") {
+    return NextResponse.json({ error: "缺少参数" }, { status: 400 });
+  }
+
+  const { error } = await supabase
+    .from("checkins")
+    .update({ note: note.slice(0, 200) })
+    .eq("id", checkinId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    return NextResponse.json({ error: "更新失败" }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
 }
 
 // 根据场景生成简短描述，传给 AI
