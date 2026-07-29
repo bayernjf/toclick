@@ -148,6 +148,29 @@ export default function DashboardPage() {
     }
   }
 
+  // 休息日 skip
+  async function handleSkip(goalId: string) {
+    try {
+      const resp = await fetch("/api/checkin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ goal_id: goalId, skip: true }),
+      });
+
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        setToast({ msg: data?.error || "标记失败", type: "error" });
+        return;
+      }
+
+      await loadGoals();
+      setToast({ msg: "🌴 休息日已标记，今天不损你" });
+    } catch {
+      setToast({ msg: "网络错误，再试一次", type: "error" });
+    }
+  }
+
   async function handleReact(reaction: "liked" | "disliked") {
     if (!currentFeedbackLogId) return;
     await fetch("/api/ai-feedback", {
@@ -224,7 +247,12 @@ export default function DashboardPage() {
       ) : (
         <section className="space-y-4">
           {goals.map((g) => (
-            <GoalCard key={g.goal_id} goal={g} onCheckin={handleCheckin} />
+            <GoalCard
+              key={g.goal_id}
+              goal={g}
+              onCheckin={handleCheckin}
+              onSkip={handleSkip}
+            />
           ))}
         </section>
       )}
