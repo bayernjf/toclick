@@ -10,6 +10,8 @@ import GoalCard from "@/components/GoalCard";
 import AIFeedbackCard from "@/components/AIFeedbackCard";
 import Toast from "@/components/Toast";
 import type { TodayCheckinView } from "@/lib/types";
+import type { PersonaId } from "@/lib/ai/persona";
+import { DEFAULT_PERSONA, PERSONA_MAP } from "@/lib/ai/persona";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -19,9 +21,15 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [feedbackStreak, setFeedbackStreak] = useState<number | undefined>();
-  const [toast, setToast] = useState<{ msg: string; type?: "info" | "error" } | null>(null);
-  const [currentFeedbackLogId, setCurrentFeedbackLogId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{
+    msg: string;
+    type?: "info" | "error";
+  } | null>(null);
+  const [currentFeedbackLogId, setCurrentFeedbackLogId] = useState<
+    string | null
+  >(null);
   const [currentCheckinId, setCurrentCheckinId] = useState<string | null>(null);
+  const [userPersona, setUserPersona] = useState<PersonaId>(DEFAULT_PERSONA);
 
   const [synced, setSynced] = useState<number | null>(null);
   const [showReportCTA, setShowReportCTA] = useState(false);
@@ -116,16 +124,23 @@ export default function DashboardPage() {
       }
     } catch (err: unknown) {
       // 网络错误 → 离线排队
-      if (err instanceof TypeError || (err as Error).message?.includes("fetch")) {
+      if (
+        err instanceof TypeError ||
+        (err as Error).message?.includes("fetch")
+      ) {
         enqueueCheckin(goalId);
         setToast({ msg: "📡 离线打卡已暂存，联网后自动提交" });
         // 乐观更新 UI：目标标为已打卡
         setGoals((prev) =>
           prev.map((g) =>
             g.goal_id === goalId
-              ? { ...g, checkin_date: new Date().toISOString().slice(0, 10), today_status: "success" }
-              : g
-          )
+              ? {
+                  ...g,
+                  checkin_date: new Date().toISOString().slice(0, 10),
+                  today_status: "success",
+                }
+              : g,
+          ),
         );
       } else {
         setToast({ msg: "打卡失败，再点一次", type: "error" });
@@ -176,7 +191,18 @@ export default function DashboardPage() {
 
   const today = new Date();
   const dateStr = `${today.getMonth() + 1}月${today.getDate()}日`;
-  const weekday = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][today.getDay()];
+  const weekday = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][
+    today.getDay()
+  ];
+
+  // 加载用户人设
+  useEffect(() => {
+    async function loadPersona() {
+      const { data } = await supabase.from("users").select("persona").single();
+      if (data?.persona) setUserPersona(data.persona as PersonaId);
+    }
+    loadPersona();
+  }, [supabase]);
 
   return (
     <main className="px-5 py-6 pb-16 min-h-screen">
@@ -187,9 +213,7 @@ export default function DashboardPage() {
         <p className="text-muted">
           {dateStr} {weekday}
         </p>
-        <h1 className="text-h1 mt-1">
-          今天你立了 {goals.length} 个 flag
-        </h1>
+        <h1 className="text-h1 mt-1">今天你立了 {goals.length} 个 flag</h1>
       </section>
 
       {/* 目标列表 */}
@@ -218,7 +242,8 @@ export default function DashboardPage() {
                   📊 {reportWeekLabel} 周报已出炉
                 </p>
                 <p className="text-sm text-brand-600/70 mt-0.5">
-                  看看损友这周怎么评价你 →
+                  看看{PERSONA_MAP[userPersona]?.label ?? "损友"}这周怎么评价你
+                  →
                 </p>
               </div>
               <span className="text-2xl">👀</span>
@@ -237,10 +262,16 @@ export default function DashboardPage() {
 
       {/* 底部导航 */}
       <nav className="mt-10 flex gap-3">
-        <Link href="/report" className="flex-1 h-12 rounded-xl bg-white border border-ink-100 flex items-center justify-center text-sm font-medium text-ink-700 active:bg-ink-100">
+        <Link
+          href="/report"
+          className="flex-1 h-12 rounded-xl bg-white border border-ink-100 flex items-center justify-center text-sm font-medium text-ink-700 active:bg-ink-100"
+        >
           📊 7 日报告
         </Link>
-        <Link href="/settings" className="flex-1 h-12 rounded-xl bg-white border border-ink-100 flex items-center justify-center text-sm font-medium text-ink-700 active:bg-ink-100">
+        <Link
+          href="/settings"
+          className="flex-1 h-12 rounded-xl bg-white border border-ink-100 flex items-center justify-center text-sm font-medium text-ink-700 active:bg-ink-100"
+        >
           ⚙️ 设置
         </Link>
       </nav>
@@ -251,6 +282,7 @@ export default function DashboardPage() {
           feedback={feedback}
           streak={feedbackStreak}
           milestone={7}
+          persona={userPersona}
           onClose={handleCloseFeedback}
           onReact={handleReact}
           onNote={handleSaveNote}

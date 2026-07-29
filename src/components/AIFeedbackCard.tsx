@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { PERSONA_MAP, DEFAULT_PERSONA } from "@/lib/ai/persona";
+import type { PersonaId } from "@/lib/ai/persona";
 
 type Props = {
   feedback: string;
   streak?: number;
   milestone?: number | null;
+  persona?: PersonaId;
   onClose: () => void;
   onReact: (reaction: "liked" | "disliked") => void;
   onNote?: (note: string) => Promise<void>;
@@ -15,11 +18,13 @@ export default function AIFeedbackCard({
   feedback,
   streak,
   milestone,
+  persona: personaId = DEFAULT_PERSONA,
   onClose,
   onReact,
   onNote,
 }: Props) {
   const [reacted, setReacted] = useState<"liked" | "disliked" | null>(null);
+  const p = PERSONA_MAP[personaId] ?? PERSONA_MAP[DEFAULT_PERSONA];
   const [note, setNote] = useState("");
   const [noteSaved, setNoteSaved] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
@@ -49,9 +54,9 @@ export default function AIFeedbackCard({
         {/* AI 头像 */}
         <div className="flex flex-col items-center mb-5">
           <div className="w-20 h-20 rounded-full bg-brand-200 flex items-center justify-center text-4xl mb-2">
-            😏
+            {p.emoji}
           </div>
-          <span className="text-sm font-medium text-ink-700">损友</span>
+          <span className="text-sm font-medium text-ink-700">{p.label}</span>
         </div>
 
         {/* 反馈文案（核心） */}
