@@ -10,6 +10,7 @@ import {
   parseBody,
   parseQuery,
 } from "@/lib/validations";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 // GET /api/ai-feedback?goal_id=xxx&date=2026-07-29
 // 获取某目标在某日期的 AI 反馈（优先查日志，无则实时生成）
@@ -48,6 +49,14 @@ export async function GET(request: Request) {
   }
 
   // 没有预生成 → 实时生成（兜底）
+  // Rate limit: 5 real-time AI generations per 60s per user
+  if (!checkRateLimit(`aigen:${user.id}`, 5, 60_000)) {
+    return NextResponse.json(
+      { error: "操作太频繁，请稍后再试" },
+      { status: 429 }
+    );
+  }
+
   const { data: goal } = await supabase
     .from("goals")
     .select("*")

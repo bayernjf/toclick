@@ -13,6 +13,7 @@ import {
   checkinPatchSchema,
   parseBody,
 } from "@/lib/validations";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 // POST /api/checkin
 // body: { goal_id: string }
@@ -34,6 +35,14 @@ export async function POST(request: Request) {
 
   if (!user) {
     return NextResponse.json({ error: "未登录" }, { status: 401 });
+  }
+
+  // Rate limit: 10 checkins per 60s per user
+  if (!checkRateLimit(`checkin:${user.id}`, 10, 60_000)) {
+    return NextResponse.json(
+      { error: "操作太频繁，请稍后再试" },
+      { status: 429 }
+    );
   }
 
   const rawBody = await request.json().catch(() => null);
