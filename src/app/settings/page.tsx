@@ -12,11 +12,19 @@ import Toast from "@/components/Toast";
 import { useTheme } from "@/lib/theme";
 import { MINOR_AGE, GOAL_TYPES, DIFFICULTIES } from "@/lib/constants";
 import type { Goal } from "@/lib/types";
+import { usePush } from "@/lib/usePush";
 
 export default function SettingsPage() {
   const router = useRouter();
   const supabase = createSupabaseClient();
   const { theme, toggleTheme } = useTheme();
+  const {
+    supported: pushSupported,
+    isSubscribed,
+    subscribing,
+    subscribe,
+    unsubscribe,
+  } = usePush();
 
   const [roastEnabled, setRoastEnabled] = useState(true);
   const [age, setAge] = useState(25);
@@ -383,6 +391,39 @@ export default function SettingsPage() {
             </div>
           </div>
         </section>
+
+        {/* 推送通知 */}
+        {pushSupported && (
+          <section>
+            <h2 className="text-h2 mb-3">▎推送通知</h2>
+            <div className="card">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-body font-medium">浏览器通知</p>
+                  <p className="text-muted mt-1">
+                    {isSubscribed
+                      ? "到点打卡时会收到提醒"
+                      : "开起后可收到打卡提醒"}
+                  </p>
+                </div>
+                <button
+                  onClick={isSubscribed ? unsubscribe : subscribe}
+                  disabled={subscribing}
+                  className={`relative w-12 h-7 rounded-full transition-colors ${
+                    isSubscribed ? "bg-brand-500" : "bg-ink-200 dark:bg-ink-300"
+                  }`}
+                  aria-label="切换推送通知"
+                >
+                  <span
+                    className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                      isSubscribed ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* 数据 */}
         <section>

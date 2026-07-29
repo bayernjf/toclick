@@ -2,12 +2,10 @@ import { NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { generateAiFeedback } from "@/lib/ai/doubao";
 import type { PersonaId } from "@/lib/ai/persona";
-import {
-  GOAL_TYPES,
-  PROTECTION_MODE_THRESHOLD,
-} from "@/lib/constants";
+import { GOAL_TYPES, PROTECTION_MODE_THRESHOLD } from "@/lib/constants";
 import type { Goal, User, AiUserState } from "@/lib/types";
 import { cronPostSchema, parseBody } from "@/lib/validations";
+import { broadcastPush } from "@/lib/push";
 
 // POST /api/cron
 // 由 Supabase pg_cron / Vercel Cron / 外部定时任务 调用
@@ -38,7 +36,11 @@ export async function POST(request: Request) {
     .returns<Goal[]>();
 
   if (!goals || goals.length === 0) {
-    return NextResponse.json({ ok: true, failed: 0, message: "no active goals" });
+    return NextResponse.json({
+      ok: true,
+      failed: 0,
+      message: "no active goals",
+    });
   }
 
   const results: Array<{
@@ -190,8 +192,16 @@ export async function POST(request: Request) {
     const start = weekStart.toISOString().slice(0, 10);
     const end = weekEnd.toISOString().slice(0, 10);
 
-    weeklyReportsGenerated = await generateWeeklyReports(supabase, start, end, goals);
+    weeklyReportsGenerated = await generateWeeklyReports(
+      supabase,
+      start,
+      end,
+      goals,
+    );
   }
+
+  // Send push notifications for failed goals
+  const pushSent = await sendFailedPushNotifications(supabase, results, today);
 
   return NextResponse.json({
     ok: true,
@@ -201,6 +211,7 @@ export async function POST(request: Request) {
     skipped: results.filter((r) => r.status === "skipped").length,
     errors: results.filter((r) => r.status === "error").length,
     weekly_reports: weeklyReportsGenerated,
+    push_sent: pushSent,
     details: results,
   });
 }
@@ -210,7 +221,7 @@ async function generateWeeklyReports(
   supabase: Awaited<ReturnType<typeof createSupabaseServer>>,
   weekStart: string,
   weekEnd: string,
-  goals: Goal[]
+  goals: Goal[],
 ): Promise<number> {
   let count = 0;
 
@@ -238,8 +249,10 @@ async function generateWeeklyReports(
         .lte("checkin_date", weekEnd);
 
       const total = checkins?.length ?? 0;
-      const successCount = checkins?.filter((c) => c.status === "success").length ?? 0;
-      const failCount = checkins?.filter((c) => c.status === "failed").length ?? 0;
+      const successCount =
+        checkins?.filter((c) => c.status === "success").length ?? 0;
+      const failCount =
+        checkins?.filter((c) => c.status === "failed").length ?? 0;
 
       // 以当前最新连胜/最佳连胜为准
       const { data: currentGoal } = await supabase
@@ -264,10 +277,10 @@ async function generateWeeklyReports(
           successCount >= 6
             ? "表现优秀"
             : failCount >= 5
-            ? "惨不忍睹"
-            : successCount > failCount
-            ? "差强人意"
-            : "一塌糊涂";
+              ? "惨不忍睹"
+              : successCount > failCount
+                ? "差强人意"
+                : "一塌糊涂";
 
         const aiState: AiUserState = {
           scenario: `${GOAL_TYPES[goal.goal_type].label}一周总结：共${total}天，成功${successCount}天，失败${failCount}天，整体${streakStr}`,
@@ -291,12 +304,12 @@ async function generateWeeklyReports(
         user_id: goal.user_id,
         week_start: weekStart,
         week_end: weekEnd,
-        total_goals: 1,            // 本报告针对单个目标
-        expected_checks: 7,        // 一周共 7 天
-        checkins_count: total,     // 实际打卡次数
+        total_goals: 1, // 本报告针对单个目标
+        expected_checks: 7, // 一周共 7 天
+        checkins_count: total, // 实际打卡次数
         success_count: successCount,
         fail_count: failCount,
-        max_streak: bestStreak,    // 对齐 schema 字段名
+        max_streak: bestStreak, // 对齐 schema 字段名
         ai_comment: aiComment || undefined,
       });
 
@@ -312,10 +325,68 @@ async function generateWeeklyReports(
 // 查询某目标连续失败天数（调用数据库函数）
 async function getConsecutiveFails(
   supabase: Awaited<ReturnType<typeof createSupabaseServer>>,
-  goalId: string
+  goalId: string,
 ): Promise<number> {
   const { data } = await supabase.rpc("get_consecutive_fails", {
     p_goal_id: goalId,
   });
   return (data as number) ?? 0;
+}
+
+// Send push notification to users whose goals were marked as "failed" today
+async function sendFailedPushNotifications(
+  supabase: Awaited<ReturnType<typeof createSupabaseServer>>,
+  results: Array<{
+    goal_id: string;
+    status: string;
+    user_id?: string;
+    goal_type?: string;
+    nickname?: string;
+  }>,
+  _today: string,
+): Promise<number> {
+  let sent = 0;
+
+  // Collect failed results with user info
+  const failedResults = results.filter((r) => r.status === "failed");
+  if (failedResults.length === 0) return 0;
+
+  // Group by user_id (dedupe: one notification per user)
+  const userGoalMap = new Map<string, typeof failedResults>();
+  for (const r of failedResults) {
+    if (!r.user_id) continue;
+    if (!userGoalMap.has(r.user_id)) userGoalMap.set(r.user_id, []);
+    userGoalMap.get(r.user_id)!.push(r);
+  }
+
+  for (const [userId, userFailedGoals] of userGoalMap) {
+    // Get user's push subscriptions
+    const { data: subs } = await supabase
+      .from("push_subscriptions")
+      .select("id, endpoint, p256dh, auth")
+      .eq("user_id", userId);
+
+    if (!subs || subs.length === 0) continue;
+
+    const goalTypes = userFailedGoals
+      .map((r) => r.goal_type ?? "")
+      .filter(Boolean);
+    const goalLabels = Array.from(new Set(goalTypes)).join("、");
+
+    const payload = {
+      title: "⚠️ 今天忘了打卡",
+      body: `你今天的${goalLabels}还没打卡，明天开始该被损了吧…`,
+      url: "/dashboard",
+    };
+
+    const removedIds = await broadcastPush(subs, payload);
+    sent += subs.length - removedIds.length;
+
+    // Clean up stale subscriptions
+    if (removedIds.length > 0) {
+      await supabase.from("push_subscriptions").delete().in("id", removedIds);
+    }
+  }
+
+  return sent;
 }
