@@ -39,6 +39,9 @@ export async function generateAiFeedback(
     { role: "user", content: userMsg },
   ];
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000); // 15s 超时
+
   try {
     const resp = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
@@ -53,17 +56,18 @@ export async function generateAiFeedback(
         max_tokens: 120,
         top_p: 0.9,
       }),
-      // 豆包 API 偶尔会慢
-      next: { revalidate: 0 },
+      signal: controller.signal,
     });
 
     if (!resp.ok) {
+      clearTimeout(timeout);
       const errText = await resp.text();
       console.error("[doubao] API error", resp.status, errText);
       return { text: null, ok: false, error: `豆包 API ${resp.status}` };
     }
 
     const data = await resp.json();
+    clearTimeout(timeout);
     const text: string = data?.choices?.[0]?.message?.content?.trim() ?? "";
 
     if (!text) {
@@ -82,6 +86,7 @@ export async function generateAiFeedback(
 
     return { text, ok: true };
   } catch (e) {
+    clearTimeout(timeout);
     console.error("[doubao] 调用异常", e);
     return { text: null, ok: false, error: "网络异常" };
   }
