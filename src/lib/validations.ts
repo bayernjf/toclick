@@ -10,7 +10,10 @@ const dateStr = z
 
 const note = z.string().max(200, "Note must be 200 characters or fewer");
 
-const reaction = z.enum(["liked", "disliked"], "reaction must be 'liked' or 'disliked'");
+const reaction = z.enum(
+  ["liked", "disliked"],
+  "reaction must be 'liked' or 'disliked'",
+);
 
 // ─── /api/checkin ──────────────────────────────────────────────
 
@@ -54,6 +57,18 @@ export type CronPostInput = z.infer<typeof cronPostSchema>;
 // sync has no request body, but validate userId comes from Supabase auth
 // No input schema needed — route is auth-only with no body
 
+// ─── /api/goals ─────────────────────────────────────────────────
+
+export const goalUpdateSchema = z.object({
+  goal_type: z.string().min(1, "Goal type is required"),
+  difficulty: z.enum(["easy", "medium", "hard"], "Invalid difficulty"),
+  checkin_time: z
+    .string()
+    .regex(/^\d{2}:\d{2}:\d{2}$/, "checkin_time must be HH:MM:SS format"),
+});
+
+export type GoalUpdateInput = z.infer<typeof goalUpdateSchema>;
+
 // ─── Utility ───────────────────────────────────────────────────
 
 /**
@@ -62,7 +77,7 @@ export type CronPostInput = z.infer<typeof cronPostSchema>;
  */
 export function parseBody<T>(
   schema: z.ZodSchema<T>,
-  body: unknown
+  body: unknown,
 ): { ok: true; data: T } | { ok: false; error: string; status: number } {
   const result = schema.safeParse(body);
   if (!result.success) {
@@ -79,7 +94,7 @@ export function parseBody<T>(
  */
 export function parseQuery<T>(
   schema: z.ZodSchema<T>,
-  url: string
+  url: string,
 ): { ok: true; data: T } | { ok: false; error: string; status: number } {
   const { searchParams } = new URL(url);
   const raw: Record<string, string> = {};
