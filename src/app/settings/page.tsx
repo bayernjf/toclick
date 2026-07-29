@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { PERSONA_MAP, DEFAULT_PERSONA } from "@/lib/ai/persona";
@@ -9,7 +10,8 @@ import Header from "@/components/Header";
 import ThemeToggle from "@/components/ThemeToggle";
 import Toast from "@/components/Toast";
 import { useTheme } from "@/lib/theme";
-import { MINOR_AGE } from "@/lib/constants";
+import { MINOR_AGE, GOAL_TYPES, DIFFICULTIES } from "@/lib/constants";
+import type { Goal } from "@/lib/types";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -26,6 +28,7 @@ export default function SettingsPage() {
   const [savingAge, setSavingAge] = useState(false);
   const [editingAge, setEditingAge] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [goals, setGoals] = useState<Goal[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -53,6 +56,19 @@ export default function SettingsPage() {
     }
     load();
   }, [supabase, router]);
+
+  // Load user's active goals
+  useEffect(() => {
+    async function loadGoals() {
+      const { data } = await supabase
+        .from("goals")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at", { ascending: true });
+      if (data) setGoals(data as Goal[]);
+    }
+    loadGoals();
+  }, [supabase]);
 
   async function saveNickname() {
     if (!nickname.trim() || nickname === originalNickname) return;
@@ -231,6 +247,55 @@ export default function SettingsPage() {
             <p className="text-muted mt-2">
               未成年账户（&lt;{MINOR_AGE}岁）强制纯夸夸模式
             </p>
+          )}
+        </section>
+
+        {/* 我的目标 */}
+        <section>
+          <h2 className="text-h2 mb-3">▎我的目标</h2>
+          {goals.length === 0 ? (
+            <div className="card text-center py-6">
+              <p className="text-muted mb-3">还没有目标</p>
+              <Link
+                href="/goals/new"
+                className="btn-secondary inline-flex text-sm"
+              >
+                + 立一个
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {goals.map((g) => (
+                <div
+                  key={g.id}
+                  className="card flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-xl shrink-0">
+                      {GOAL_TYPES[g.goal_type]?.emoji ?? "🎯"}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-body font-medium truncate">
+                        {GOAL_TYPES[g.goal_type]?.label ?? g.goal_type}
+                      </p>
+                      <p className="text-muted text-xs truncate">
+                        {DIFFICULTIES[g.difficulty]?.label ?? g.difficulty}
+                        {" · "}
+                        {g.checkin_time?.slice(0, 5) ?? "未设置"}
+                        {" · 连续 "}
+                        {g.current_streak} 天
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    href={`/goals/${g.id}/edit`}
+                    className="shrink-0 text-sm text-brand-500 font-medium ml-3 active:text-brand-600"
+                  >
+                    编辑
+                  </Link>
+                </div>
+              ))}
+            </div>
           )}
         </section>
 
