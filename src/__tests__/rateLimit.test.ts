@@ -1,9 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { checkRateLimit, getRateLimitRemaining } from "@/lib/rateLimit";
-
-// Access internal store for cleanup between tests
-// @ts-expect-error accessing module internals for test
-import * as rateLimitModule from "@/lib/rateLimit";
 
 describe("checkRateLimit", () => {
   const KEY = "test:user-123";

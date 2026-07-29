@@ -4,7 +4,7 @@
 
 ## What Was Done This Session
 
-Completed a comprehensive project hardening pass (10 atomic commits):
+### Round 1 — Project Hardening (10 commits)
 
 1. **Schema fix** — Synced `flag_breaker_schema.sql` with migrations: added `persona` to `users`, `goal_id`/`checkins_count` to `weekly_reports`, `created_at` to `v_today_checkins`
 2. **Config** — Added `CRON_SECRET` to `.env.local.example`
@@ -15,54 +15,63 @@ Completed a comprehensive project hardening pass (10 atomic commits):
 7. **Error handling** — Replaced `!` non-null assertions with explicit env checks in Supabase clients
 8. **Styles** — Completed Tailwind color scales for `ink`, `success`, and `warn`
 9. **Error boundary** — Added `ErrorBoundary.tsx` component for render fallback
-10. **Security headers** — Added `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, `Referrer-Policy`, `Permissions-Policy` in `next.config.js`
+10. **Security headers** — Added HTTP security headers in `next.config.js`
+
+### Round 2 — Input Validation + Rate Limiting (2 commits)
+
+11. **zod validation** — Created `src/lib/validations.ts` with schemas for all 4 API routes, added `parseBody`/`parseQuery` helpers
+12. **Rate limiting** — Created `src/lib/rateLimit.ts` with sliding window algorithm, applied to `/api/checkin` (10/60s) and `/api/ai-feedback` real-time fallback (5/60s)
+
+### Round 3 — Testing + CI (2 commits)
+
+13. **Unit tests** — 41 tests across 3 suites: `validations.test.ts` (19), `rateLimit.test.ts` (9), `persona.test.ts` (13)
+14. **Pre-commit hooks** — husky + lint-staged: eslint → prettier → type-check → vitest on every commit
 
 ## Current Project State
 
-| Layer | Status |
-|-------|--------|
-| TypeScript | Strict mode, compiles clean |
-| Schema | Synced with all 3 migrations |
-| Auth | Supabase email magic link |
-| AI | Doubao API with dual persona (bro + senpai) |
-| PWA | Service worker + offline checkin queue |
-| Cron | Weekly reports + failed checkin auto-mark |
-| Security | RLS + HTTP headers + non-null-free env checks |
-| Tests | **None** — zero test coverage |
+| Layer      | Status                                                |
+| ---------- | ----------------------------------------------------- |
+| TypeScript | Strict mode, compiles clean                           |
+| Schema     | Synced with all 3 migrations                          |
+| Auth       | Supabase email magic link                             |
+| AI         | Doubao API with dual persona (bro + senpai)           |
+| PWA        | Service worker + offline checkin queue                |
+| Cron       | Weekly reports + failed checkin auto-mark             |
+| Security   | RLS + HTTP headers + zod validation + rate limiting   |
+| Tests      | 41 unit tests, 3 suites, all passing                  |
+| CI         | Pre-commit hooks: lint → prettier → type-check → test |
 
 ## Recommended Next Steps
 
-### High-Impact / Low-Effort
-1. **zod input validation** on API routes (`/api/checkin`, `/api/cron`, `/api/checkin/sync`)
-2. **API rate limiting** — doubao API costs per token; no rate limiting risks abuse
+### High-Impact
+
+1. **E2E tests with Playwright** — core flow: register → create goal → checkin → AI feedback
+2. **CSP header** — `Content-Security-Policy` in `next.config.js` (needs inline script/style tuning)
+3. **Error monitoring** — Sentry or similar for production crash tracking
 
 ### Medium Effort
-3. **Unit tests with vitest** — `persona.ts` (prompt building, banned word check), `doubao.ts` (response parsing), `offlineQueue.ts`
-4. **Pre-commit hooks** — `lint-staged` + `husky` for auto type-check + lint on commit
 
-### Longer Term
-5. **E2E tests with Playwright** — core flow: register → create goal → checkin → AI feedback
-6. **CSP header** — `Content-Security-Policy` in `next.config.js` (needs careful tuning for inline scripts/styles)
-7. **IAP monetization** for premium personas (as planned in README P1)
+4. **Social sharing image** — Open Graph image for share cards
+5. **Dark mode** — System-preference dark theme toggle
+6. **IAP monetization** for premium personas (as planned in README P1)
 
-## Key Files Changed This Session
+## Key Files Added This Session
 
-| File | Change |
-|------|--------|
-| `flag_breaker_schema.sql` | Added 3 columns + 1 view column |
-| `.env.local.example` | Added `CRON_SECRET` |
-| `AGENTS.md` | Created (96 lines) |
-| `README.md` | Updated directory tree, MVP scope, verification checklist |
-| `src/lib/ai/doubao.ts` | AbortController timeout |
-| `src/lib/ai/persona.ts` | Few-Shot fix + comment |
-| `src/lib/supabase/server.ts` | Env check + dev-only warning on setAll |
-| `src/lib/supabase/client.ts` | Env check |
-| `tailwind.config.js` | Completed 3 color scales |
-| `src/components/ErrorBoundary.tsx` | Created (55 lines) |
-| `next.config.js` | 5 security headers |
+| File                                | Purpose                               |
+| ----------------------------------- | ------------------------------------- |
+| `src/lib/validations.ts`            | Zod schemas for all API inputs        |
+| `src/lib/rateLimit.ts`              | In-memory sliding window rate limiter |
+| `src/components/ErrorBoundary.tsx`  | React render error fallback           |
+| `src/__tests__/validations.test.ts` | 19 validation tests                   |
+| `src/__tests__/rateLimit.test.ts`   | 9 rate limiter tests                  |
+| `src/__tests__/persona.test.ts`     | 13 persona tests                      |
+| `vitest.config.ts`                  | Vitest configuration                  |
+| `.husky/pre-commit`                 | Pre-commit hook pipeline              |
+| `AGENTS.md`                         | AI coding agent project guidance      |
+| `handoff.md`                        | This handoff document                 |
 
 ## Branch Status
 
 - Branch: `feature/20260729`
-- Ahead of `origin/feature/20260729` by 29 commits
+- Ahead of `origin/feature/20260729` by 33 commits
 - **Not pushed yet** — `git push` needed
