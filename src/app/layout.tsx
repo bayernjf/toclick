@@ -4,6 +4,8 @@ import SWRegister from "@/components/SWRegister";
 import OfflineBanner from "@/components/OfflineBanner";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://flagbreaker.app";
+
 export const metadata: Metadata = {
   title: "反旗 · 立 flag 的人千千万，倒 flag 的你一个",
   description: "一个嘴毒心软的 AI 损友，盯你把事做完",
@@ -16,6 +18,29 @@ export const metadata: Metadata = {
   other: {
     "mobile-web-app-capable": "yes",
     "format-detection": "telephone=no",
+  },
+  openGraph: {
+    type: "website",
+    title: "反旗 · FlagBreaker",
+    description: "一个嘴毒心软的 AI 损友，盯你把事做完",
+    url: SITE_URL,
+    siteName: "反旗 · FlagBreaker",
+    images: [
+      {
+        url: `${SITE_URL}/api/og?title=${encodeURIComponent("反旗 · FlagBreaker")}&subtitle=${encodeURIComponent("AI 人设化反向自律打卡")}&emoji=🏴‍☠️`,
+        width: 1200,
+        height: 630,
+      },
+    ],
+    locale: "zh_CN",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "反旗 · FlagBreaker",
+    description: "一个嘴毒心软的 AI 损友，盯你把事做完",
+    images: [
+      `${SITE_URL}/api/og?title=${encodeURIComponent("反旗 · FlagBreaker")}&subtitle=${encodeURIComponent("AI 人设化反向自律打卡")}&emoji=🏴‍☠️`,
+    ],
   },
 };
 
