@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import SWRegister from "@/components/SWRegister";
 import OfflineBanner from "@/components/OfflineBanner";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 export const metadata: Metadata = {
   title: "反旗 · 立 flag 的人千千万，倒 flag 的你一个",
@@ -37,7 +38,9 @@ export default function RootLayout({
       <body>
         <SWRegister />
         <OfflineBanner />
-        <div className="app-container">{children}</div>
+        <div className="app-container">
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </div>
       </body>
     </html>
   );

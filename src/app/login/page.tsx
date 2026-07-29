@@ -20,8 +20,7 @@ export default function LoginPage() {
     setLoading(true);
     setToast(null);
 
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -68,11 +67,7 @@ export default function LoginPage() {
           />
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn-primary"
-        >
+        <button type="submit" disabled={loading} className="btn-primary">
           {loading ? "发送中…" : "发送登录链接"}
         </button>
       </form>
@@ -86,7 +81,14 @@ export default function LoginPage() {
       <div className="flex-1" />
 
       <p className="text-muted text-center mt-10">
-        登录即同意用户协议与隐私政策
+        登录即同意
+        <Link href="/terms" className="underline underline-offset-2">
+          用户协议
+        </Link>
+        与
+        <Link href="/privacy" className="underline underline-offset-2">
+          隐私政策
+        </Link>
       </p>
     </main>
   );
