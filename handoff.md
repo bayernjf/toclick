@@ -34,6 +34,24 @@
 17. **Error boundary** — Wrapped app children with `ErrorBoundary` in `layout.tsx`; added terms/privacy links on login page
 18. **Week navigation** — Report page now supports historical week switching via prev/next arrows, with checkins reloading for the selected week
 
+### Round 5 — Dark Mode (4 commits)
+
+19. **CSS variables color system** — Converted all brand/success/warn/ink Tailwind colors to CSS variables with `<alpha-value>` support. Defined `:root` (light) and `html.dark` (dark) CSS variable sets. Ink scale is inverted in dark mode; brand/success/warn are adjusted for dark readability. Added `darkMode: 'class'` to Tailwind config.
+20. **Theme management** — Created `useTheme` hook with localStorage persistence + system preference fallback. `ThemeToggle` component with emoji indicator.
+21. **FOUC prevention** — Inline script in `<head>` applies `dark` class before first paint. Dynamic `themeColor` for PWA manifest.
+22. **Component dark adaptation** — Applied `dark:` variants to all components: Toast, OfflineBanner, AIFeedbackCard, GoalCard, ErrorBoundary, and all pages (login, new goal, dashboard, report, settings). Cards use `dark:bg-ink-100`; borders use `dark:border-ink-200/300`; special backgrounds (Toasts) maintain dark overlay semantics.
+
+## Dark Mode Architecture
+
+| Mechanism         | Detail                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| Strategy          | Tailwind `darkMode: 'class'` + CSS custom properties                                  |
+| Color system      | All `bg-ink-N` / `text-ink-N` pick up dark values automatically via CSS var inversion |
+| `bg-white`        | Needs explicit `dark:bg-ink-100` (not auto)                                           |
+| Theme toggle      | Settings page "外观" section; persists in localStorage                                |
+| FOUC prevention   | Inline `<script>` in `<head>` reads localStorage before render                        |
+| System preference | Falls back to `prefers-color-scheme` if no stored preference                          |
+
 ## Current Project State
 
 | Layer      | Status                                                |
@@ -47,45 +65,50 @@
 | Security   | RLS + HTTP headers + zod validation + rate limiting   |
 | Tests      | 41 unit tests, 3 suites, all passing                  |
 | CI         | Pre-commit hooks: lint → prettier → type-check → test |
-| UI         | Persona-aware everywhere; age editable; week nav      |
+| UI         | Persona-aware, age editable, week nav, dark mode      |
 
 ## Recommended Next Steps
 
 ### High-Impact
 
 1. **E2E tests with Playwright** — core flow: register → create goal → checkin → AI feedback
-2. **CSP header** — `Content-Security-Policy` in `next.config.js` (needs inline script/style tuning)
+2. **CSP header** — `Content-Security-Policy` in `next.config.js` (inline scripts need hashes)
 3. **Error monitoring** — Sentry or similar for production crash tracking
 
 ### Medium Effort
 
 4. **Social sharing image** — Open Graph image for share cards
-5. **Dark mode** — System-preference dark theme toggle
-6. **IAP monetization** for premium personas (as planned in README P1)
+5. **IAP monetization** for premium personas (as planned in README P1)
 
 ## Key Files Added/Changed This Session
 
-| File                                | Purpose                               |
-| ----------------------------------- | ------------------------------------- |
-| `src/lib/validations.ts`            | Zod schemas for all API inputs        |
-| `src/lib/rateLimit.ts`              | In-memory sliding window rate limiter |
-| `src/components/ErrorBoundary.tsx`  | React render error fallback           |
-| `src/components/AIFeedbackCard.tsx` | Now persona-aware (emoji + label)     |
-| `src/app/dashboard/page.tsx`        | Loads + passes user persona           |
-| `src/app/report/page.tsx`           | Week navigation + dynamic persona     |
-| `src/app/settings/page.tsx`         | Editable age + fixed getUser() calls  |
-| `src/app/layout.tsx`                | Wrapped with ErrorBoundary            |
-| `src/app/login/page.tsx`            | Terms/privacy links                   |
-| `src/__tests__/validations.test.ts` | 19 validation tests                   |
-| `src/__tests__/rateLimit.test.ts`   | 9 rate limiter tests                  |
-| `src/__tests__/persona.test.ts`     | 13 persona tests                      |
-| `vitest.config.ts`                  | Vitest configuration                  |
-| `.husky/pre-commit`                 | Pre-commit hook pipeline              |
-| `AGENTS.md`                         | AI coding agent project guidance      |
-| `handoff.md`                        | This handoff document                 |
+| File                                | Purpose                                  |
+| ----------------------------------- | ---------------------------------------- |
+| `src/lib/validations.ts`            | Zod schemas for all API inputs           |
+| `src/lib/rateLimit.ts`              | In-memory sliding window rate limiter    |
+| `src/lib/theme.ts`                  | useTheme hook: dark/light persistence    |
+| `src/components/ErrorBoundary.tsx`  | React render error fallback              |
+| `src/components/ThemeToggle.tsx`    | Dark mode toggle button                  |
+| `src/components/AIFeedbackCard.tsx` | Now persona-aware + dark mode            |
+| `src/components/GoalCard.tsx`       | Dark mode border variants                |
+| `src/components/Toast.tsx`          | Dark mode bg for overlay                 |
+| `src/app/dashboard/page.tsx`        | Loads + passes user persona + dark       |
+| `src/app/report/page.tsx`           | Week navigation + dynamic persona        |
+| `src/app/settings/page.tsx`         | Editable age + theme toggle              |
+| `src/app/layout.tsx`                | ErrorBoundary + FOUC script + themeColor |
+| `src/app/login/page.tsx`            | Terms/privacy links + dark mode          |
+| `tailwind.config.js`                | darkMode:class + CSS var colors          |
+| `src/app/globals.css`               | CSS variables + card/button utilities    |
+| `src/__tests__/validations.test.ts` | 19 validation tests                      |
+| `src/__tests__/rateLimit.test.ts`   | 9 rate limiter tests                     |
+| `src/__tests__/persona.test.ts`     | 13 persona tests                         |
+| `vitest.config.ts`                  | Vitest configuration                     |
+| `.husky/pre-commit`                 | Pre-commit hook pipeline                 |
+| `AGENTS.md`                         | AI coding agent project guidance         |
+| `handoff.md`                        | This handoff document                    |
 
 ## Branch Status
 
 - Branch: `feature/20260729`
-- Ahead of `origin/feature/20260729` by 37 commits
+- Ahead of `origin/feature/20260729` by 41 commits
 - **Not pushed yet** — `git push` needed
