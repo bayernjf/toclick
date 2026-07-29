@@ -8,6 +8,7 @@ type Props = {
   milestone?: number | null;
   onClose: () => void;
   onReact: (reaction: "liked" | "disliked") => void;
+  onNote?: (note: string) => Promise<void>;
 };
 
 export default function AIFeedbackCard({
@@ -16,13 +17,30 @@ export default function AIFeedbackCard({
   milestone,
   onClose,
   onReact,
+  onNote,
 }: Props) {
   const [reacted, setReacted] = useState<"liked" | "disliked" | null>(null);
+  const [note, setNote] = useState("");
+  const [noteSaved, setNoteSaved] = useState(false);
+  const [savingNote, setSavingNote] = useState(false);
 
   function handleReact(r: "liked" | "disliked") {
     if (reacted) return;
     setReacted(r);
     onReact(r);
+  }
+
+  async function handleSaveNote() {
+    if (!onNote || !note.trim() || noteSaved) return;
+    setSavingNote(true);
+    try {
+      await onNote(note.trim());
+      setNoteSaved(true);
+    } catch {
+      // silently fail
+    } finally {
+      setSavingNote(false);
+    }
   }
 
   return (
@@ -47,6 +65,36 @@ export default function AIFeedbackCard({
             连续 {streak} 天
             {milestone ? ` · 再坚持 ${milestone - streak} 天解锁成就` : ""}
           </p>
+        )}
+
+        {/* 打卡感想（可选输入） */}
+        {onNote && (
+          <div className="mb-5">
+            <div className="flex items-center gap-2">
+              <input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="写句感想？（打鸡血专用）"
+                maxLength={200}
+                disabled={noteSaved}
+                className="flex-1 h-11 px-4 rounded-xl bg-white border border-ink-100 text-sm text-ink-700 placeholder:text-ink-700/30 focus:outline-none focus:border-brand-300 disabled:bg-ink-50 disabled:text-ink-700/50"
+              />
+              {!noteSaved && note.trim() && (
+                <button
+                  onClick={handleSaveNote}
+                  disabled={savingNote}
+                  className="shrink-0 h-11 px-4 rounded-xl bg-brand-500 text-white text-sm font-medium active:bg-brand-600 disabled:opacity-50"
+                >
+                  {savingNote ? "..." : "保存"}
+                </button>
+              )}
+              {noteSaved && (
+                <span className="shrink-0 text-success-500 text-sm font-medium">
+                  ✓ 已记下
+                </span>
+              )}
+            </div>
+          </div>
         )}
 
         {/* 反应按钮 */}
