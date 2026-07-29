@@ -1,4 +1,5 @@
-import { SYSTEM_PROMPT, FEW_SHOT, containsBannedWord } from "./persona";
+import { getPersonaSystemPrompt, getPersonaFewShot, containsBannedWord } from "./persona";
+import type { PersonaId } from "./persona";
 import type { AiUserState } from "../types";
 import {
   GOAL_TYPES,
@@ -13,7 +14,8 @@ import {
 type ArkMessage = { role: "system" | "user" | "assistant"; content: string };
 
 export async function generateAiFeedback(
-  userState: AiUserState
+  userState: AiUserState,
+  persona: PersonaId = "bro"
 ): Promise<{ text: string; ok: true } | { text: null; ok: false; error: string }> {
   const apiKey = process.env.ARK_API_KEY;
   const baseUrl = process.env.ARK_BASE_URL || "https://ark.cn-beijing.volces.com/api/v3";
@@ -32,8 +34,8 @@ export async function generateAiFeedback(
   const userMsg = buildUserMessage(userState, effectiveRoast);
 
   const messages: ArkMessage[] = [
-    { role: "system", content: SYSTEM_PROMPT },
-    ...FEW_SHOT,
+    { role: "system", content: getPersonaSystemPrompt(persona) },
+    ...getPersonaFewShot(persona),
     { role: "user", content: userMsg },
   ];
 
