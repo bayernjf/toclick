@@ -34,6 +34,9 @@ const MOCK_SESSION = {
   ...MOCK_TOKEN_RESPONSE,
 };
 
+// In-memory state for tracking checkin/skip status during tests
+const goalStatusMap = new Map<string, string>(); // goalId -> today_status
+
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve) => {
     let body = "";
@@ -122,7 +125,7 @@ async function handler(req: IncomingMessage, res: ServerResponse) {
         created_at: "2026-07-01T00:00:00+00:00",
         checkin_id: "ci-001",
         checkin_date: "2026-07-29",
-        today_status: "pending_ai_feedback",
+        today_status: goalStatusMap.get("goal-001") || "pending_ai_feedback",
         note: null,
       },
       {
@@ -137,7 +140,7 @@ async function handler(req: IncomingMessage, res: ServerResponse) {
         created_at: "2026-07-10T00:00:00+00:00",
         checkin_id: null,
         checkin_date: null,
-        today_status: null,
+        today_status: goalStatusMap.get("goal-002") || null,
         note: null,
       },
     ];
@@ -210,23 +213,109 @@ async function handler(req: IncomingMessage, res: ServerResponse) {
     ]);
   }
 
-  if (url.startsWith("/rest/v1/goals") && method === "POST") {
-    const body = await readBody(req);
-    const data = JSON.parse(body);
-    return json(res, 201, {
-      id: `goal-${Date.now()}`,
-      user_id: MOCK_USER.id,
-      goal_type: data.goal_type || "early_rise",
-      difficulty: data.difficulty || "medium",
-      checkin_time: data.checkin_time || "08:00:00",
-      is_active: true,
-      current_streak: 0,
-      best_streak: 0,
-      total_checkins: 0,
-      total_fails: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
+  // ---- Goals endpoints (GET by id, POST, PATCH, DELETE) ----
+  if (url.startsWith("/rest/v1/goals")) {
+    const accept = req.headers["accept"] || "";
+
+    if (method === "POST") {
+      const body = await readBody(req);
+      const data = JSON.parse(body);
+      return json(res, 201, {
+        id: `goal-${Date.now()}`,
+        user_id: MOCK_USER.id,
+        goal_type: data.goal_type || "early_rise",
+        difficulty: data.difficulty || "medium",
+        checkin_time: data.checkin_time || "08:00:00",
+        is_active: true,
+        current_streak: 0,
+        best_streak: 0,
+        total_checkins: 0,
+        total_fails: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    }
+
+    if (method === "PATCH") {
+      res.writeHead(204, { "Access-Control-Allow-Origin": "*" });
+      return res.end();
+    }
+
+    if (method === "DELETE") {
+      res.writeHead(204, { "Access-Control-Allow-Origin": "*" });
+      return res.end();
+    }
+
+    // GET — support filtering by id (e.g. ?id=eq.goal-001)
+    const isSingle = accept.includes("vnd.pgrst.object+json");
+    const goals = [
+      {
+        id: "goal-001",
+        user_id: MOCK_USER.id,
+        goal_type: "early_rise",
+        difficulty: "medium",
+        checkin_time: "08:00:00",
+        current_streak: 3,
+        best_streak: 5,
+        total_checkins: 12,
+        total_fails: 3,
+        is_active: true,
+        created_at: "2026-07-01T00:00:00+00:00",
+        updated_at: "2026-07-29T00:00:00+00:00",
+      },
+      {
+        id: "goal-002",
+        user_id: MOCK_USER.id,
+        goal_type: "fitness",
+        difficulty: "hard",
+        checkin_time: "18:00:00",
+        current_streak: 0,
+        best_streak: 10,
+        total_checkins: 25,
+        total_fails: 7,
+        is_active: true,
+        created_at: "2026-07-10T00:00:00+00:00",
+        updated_at: "2026-07-29T00:00:00+00:00",
+      },
+    ];
+
+    // If id filter is present, find matching goal
+    const urlObj = new URL(url, `http://localhost:${PORT}`);
+    const idFilter = urlObj.searchParams.get("id");
+    if (idFilter && idFilter.startsWith("eq.")) {
+      const goalId = idFilter.slice(3);
+      const goal = goals.find((g) => g.id === goalId);
+      if (goal) {
+        return json(res, 200, goal);
+      }
+      // PostgREST returns empty array for not-found single
+      return json(res, 200, []);
+    }
+
+    return json(res, 200, isSingle ? goals[0] : goals);
+  }
+
+  // ---- Push subscription endpoints ----
+  if (url.startsWith("/rest/v1/push_subscriptions")) {
+    if (method === "POST") {
+      return json(res, 201, {
+        id: "ps-001",
+        created_at: new Date().toISOString(),
+      });
+    }
+    if (method === "DELETE") {
+      res.writeHead(204, { "Access-Control-Allow-Origin": "*" });
+      return res.end();
+    }
+    return json(res, 200, [
+      {
+        id: "ps-001",
+        user_id: MOCK_USER.id,
+        endpoint: "https://fcm.googleapis.com/fcm/send/mock",
+        keys: { p256dh: "mock-p256dh", auth: "mock-auth" },
+        created_at: "2026-07-01T00:00:00+00:00",
+      },
+    ]);
   }
 
   // Fallback
