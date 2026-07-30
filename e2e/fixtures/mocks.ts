@@ -11,6 +11,16 @@
 import type { Page } from "@playwright/test";
 
 /* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+function encodeSessionCookie(session: Record<string, unknown>): string {
+  // @supabase/ssr 0.5.x expects base64url-encoded cookie values with "base64-" prefix
+  const base64url = Buffer.from(JSON.stringify(session)).toString("base64url");
+  return `base64-${base64url}`;
+}
+
+/* ------------------------------------------------------------------ */
 /*  Mock data                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -85,7 +95,7 @@ export async function setupMocks(page: Page) {
  * @supabase/ssr cookie name: `sb-{hostname-split0}-auth-token`
  *   For SUPABASE_URL=http://localhost:19999 → sb-localhost-auth-token
  *
- * @supabase/ssr@0.5.2 supports raw JSON cookie values (backward-compat).
+ * @supabase/ssr@0.5.2 encodes cookie values as base64url with "base64-" prefix.
  */
 export async function loginAsTestUser(page: Page) {
   const sessionData = {
@@ -105,7 +115,7 @@ export async function loginAsTestUser(page: Page) {
   await page.context().addCookies([
     {
       name: "sb-localhost-auth-token",
-      value: JSON.stringify(sessionData),
+      value: encodeSessionCookie(sessionData),
       domain: "localhost",
       path: "/",
       httpOnly: false,

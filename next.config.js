@@ -9,6 +9,10 @@ const nextConfig = {
   },
 
   async headers() {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+    const extraConnectSrc = supabaseUrl.startsWith("http://localhost")
+      ? " " + supabaseUrl
+      : "";
     return [
       {
         source: "/(.*)",
@@ -26,7 +30,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self'",
-              "connect-src 'self' https://*.supabase.co https://ark.cn-beijing.volces.com wss://*.supabase.co https://*.sentry.io",
+              `connect-src 'self' https://*.supabase.co https://ark.cn-beijing.volces.com wss://*.supabase.co https://*.sentry.io${extraConnectSrc}`,
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
