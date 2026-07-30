@@ -29,5 +29,9 @@ yarn-error.log*
 .DS_Store
 *.swp
 
+# 测试
+playwright-report/
+test-results/
+
 # 系统文件
 Thumbs.db
