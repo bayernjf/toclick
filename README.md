@@ -16,53 +16,92 @@ toclick/
 ├── flag_breaker_ui_copy_layout.md  # 首页文案 + 页面布局设计
 ├── flag_breaker_schema.sql         # Supabase 数据库 schema（含迁移合并）
 ├── AGENTS.md                       # AI 编码助手项目指引
+├── handoff.md                      # 会话交接文档
 ├── package.json
 ├── .env.local.example
+├── playwright.config.ts            # Playwright E2E 配置
+├── vitest.config.ts                # Vitest 单测配置
+├── .github/workflows/e2e.yml       # GitHub Actions E2E CI
+├── sentry.client.config.ts         # Sentry 客户端配置
+├── sentry.server.config.ts         # Sentry 服务端配置
+├── sentry.edge.config.ts           # Sentry Edge 配置
 ├── migrations/                     # 增量数据库迁移
 │   ├── 001_add_created_at_to_view.sql
 │   ├── 002_fix_weekly_reports_schema.sql
-│   └── 003_add_persona_to_users.sql
+│   ├── 003_add_persona_to_users.sql
+│   └── 004_push_subscriptions.sql
+├── e2e/                            # Playwright E2E 测试
+│   ├── fixtures/
+│   │   ├── mock-server.ts          # Mock Supabase 服务
+│   │   └── mocks.ts                # Mock API 数据
+│   ├── landing.spec.ts
+│   ├── login.spec.ts
+│   ├── dashboard.spec.ts
+│   ├── goals.spec.ts
+│   ├── goals-crud.spec.ts
+│   ├── report.spec.ts
+│   ├── settings.spec.ts
+│   ├── push-notifications.spec.ts
+│   ├── share.spec.ts
+│   └── skip-checkin.spec.ts
 ├── public/
 │   ├── manifest.json               # PWA 清单
-│   ├── sw.js                       # Service Worker 离线缓存
+│   ├── sw.js                       # Service Worker 离线缓存 + 推送
 │   └── icon-512.png                # App 图标
 └── src/
     ├── app/
-    │   ├── layout.tsx              # 根布局（PWA metadata + SW 注册）
+    │   ├── layout.tsx              # 根布局（PWA + FOUC 防护 + ErrorBoundary）
     │   ├── page.tsx                # 落地页
-    │   ├── globals.css             # 全局样式 + Tailwind
+    │   ├── globals.css             # 全局样式 + CSS 变量（深色模式）
+    │   ├── global-error.tsx        # 全局错误页（Sentry 上报）
     │   ├── login/page.tsx          # 邮箱登录
     │   ├── auth/callback/route.ts  # Magic link 回调
     │   ├── dashboard/
     │   │   ├── layout.tsx          # 鉴权
     │   │   └── page.tsx            # 打卡首页（离线队列 + 同步）
-    │   ├── goals/new/page.tsx      # 设目标
-    │   ├── report/page.tsx         # 7 日报告（多目标 + 感想 + 分享）
-    │   ├── settings/page.tsx       # 设置（AI 人设选择器 + 昵称）
+    │   ├── goals/
+    │   │   ├── new/page.tsx        # 设目标（3 步向导）
+    │   │   └── [id]/edit/page.tsx  # 编辑/删除目标
+    │   ├── report/page.tsx         # 7 日报告（周导航 + 多目标）
+    │   ├── settings/page.tsx       # 设置（人设 + 外观 + 推送 + 目标管理）
     │   └── api/
     │       ├── checkin/
-    │       │   ├── route.ts        # 打卡 + 调 AI（支持 PATCH 感想）
+    │       │   ├── route.ts        # 打卡 + 调 AI（支持 skip 休息日）
     │       │   └── sync/route.ts   # 离线打卡同步
     │       ├── ai-feedback/route.ts # AI 反馈偏好采集（传 persona）
-    │       └── cron/route.ts       # 定时任务：周报生成 + 失败打卡标记
+    │       ├── goals/[id]/route.ts  # 目标更新 (PATCH) + 软删除 (DELETE)
+    │       ├── cron/route.ts        # 定时任务：周报 + 失败标记 + 推送
+    │       ├── push/
+    │       │   ├── subscribe/route.ts   # 推送订阅
+    │       │   └── unsubscribe/route.ts # 取消订阅
+    │       ├── og/route.tsx         # OG 图片生成（@vercel/og）
+    │       └── iap/products/route.ts # IAP 商品列表（placeholder）
     ├── components/
     │   ├── Header.tsx
-    │   ├── GoalCard.tsx            # 目标卡（失败打卡 AI 反馈）
-    │   ├── AIFeedbackCard.tsx      # AI 反馈卡（打卡感想输入）
+    │   ├── GoalCard.tsx            # 目标卡（打卡 + 休息日 + 状态）
+    │   ├── AIFeedbackCard.tsx      # AI 反馈卡（人设感知 + 截图分享）
+    │   ├── ErrorBoundary.tsx       # React 渲染错误兜底
+    │   ├── ThemeToggle.tsx         # 深色/浅色模式切换
     │   ├── Toast.tsx
     │   ├── SWRegister.tsx          # Service Worker 注册
     │   └── OfflineBanner.tsx       # 离线状态提示条
     ├── lib/
-    │   ├── constants.ts            # 目标/难度/状态枚举
+    │   ├── constants.ts            # 目标/难度/状态枚举 + VAPID key
     │   ├── types.ts                # 数据库行类型
+    │   ├── validations.ts          # Zod 输入校验（4 个 API 路由）
+    │   ├── rateLimit.ts            # 滑动窗口限流器
+    │   ├── theme.ts                # useTheme Hook（深色模式持久化）
     │   ├── offlineQueue.ts         # localStorage 离线打卡队列
+    │   ├── push.ts                 # 服务端 web-push 广播
+    │   ├── usePush.ts              # 客户端推送订阅 Hook
     │   ├── supabase/
     │   │   ├── client.ts           # 浏览器端
     │   │   ├── server.ts           # 服务端
     │   │   └── middleware.ts       # session 刷新
     │   └── ai/
-    │       ├── persona.ts          # System prompt + Few-Shot（bro + senpai 双人设）
-    │       └── doubao.ts           # 豆包 API 封装（支持 persona 参数）
+    │       ├── persona.ts          # System prompt + Few-Shot（bro + senpai）
+    │       └── doubao.ts           # 豆包 API 封装（persona + 超时）
+    ├── instrumentation.ts          # Sentry 初始化钩子
     └── middleware.ts               # 根中间件
 ```
 
@@ -140,13 +179,23 @@ npm run dev
 ## MVP 范围说明
 
 本版本对应 v0.1 MVP，已实现：
+
 - 2 个 AI 人设（损友 bro + 冷淡御姐 senpai）
 - 3 类目标（早起 / 健身 / 学习）
 - 邮箱登录（无社交登录）
 - 文本反馈（无语音）
-- PWA 离线支持
-- 定时任务：周报自动生成 + 失败打卡自动标记
-- 打卡感想输入
-- 多目标周报 + Web Share 分享
+- 打卡感想输入 + 休息日 (Skip)
+- 目标编辑 / 软删除
+- 多目标周报 + 周导航 + Web Share 分享
+- 截图分享（html-to-image → Web Share API / 下载）
+- PWA 离线支持 + 离线打卡队列
+- Web Push 推送通知（打卡提醒 + 失败通知）
+- 深色模式（CSS 变量 + Tailwind darkMode:class）
+- 定时任务：周报自动生成 + 失败打卡标记 + 推送触发
+- 安全：RLS + CSP + HTTP 安全头 + Zod 验证 + Rate Limiting
+- 监控：Sentry 错误追踪（env-driven）
+- 测试：41 单测 (Vitest) + 10 E2E specs (Playwright)
+- CI：Pre-commit hooks + GitHub Actions E2E
+- OG 图片 + IAP 基础（placeholder）
 
-P1 规划：音色支持、好友互损、IAP 付费人设。
+P1 规划：音色支持、好友互损、IAP 付费人设、按目标打卡提醒、里程碑庆祝。

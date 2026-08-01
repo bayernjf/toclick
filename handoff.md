@@ -1,8 +1,19 @@
 # Handoff — 反旗 / FlagBreaker
 
-> Last session: 2026-07-30 | Branch: `feature/20260729`
+> Last session: 2026-07-31 | Branch: `feature/20260729`
 
-## What Was Done This Session
+## What Was Done This Session (2026-07-31)
+
+### Round 8 — Documentation Sync (1 commit)
+
+42. **README.md** — Updated directory structure to reflect all files added in Rounds 1–7 (e2e/, Sentry configs, push API, goals CRUD, OG image, IAP, dark mode components, validation/rateLimit/theme/push libs). Updated MVP scope section with all implemented features.
+43. **AGENTS.md** — Updated architecture overview (added goals CRUD, push, OG, IAP, Sentry). Added security section items (CSP, Zod, Rate Limiting, Sentry). Added testing section. Updated file index with 15+ new entries. Added test commands.
+44. **flag_breaker_ui_copy_layout.md** — Checked all 10 items in the verification checklist (all confirmed implemented in code).
+45. **handoff.md** — Updated with this session's changes.
+
+---
+
+## Previous Session (2026-07-30)
 
 ### Round 1 — Project Hardening (10 commits)
 
