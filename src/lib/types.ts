@@ -6,6 +6,7 @@ export type User = {
   nickname: string;
   age: number;
   roast_enabled: boolean;
+  persona?: string;
   avatar_url: string | null;
   last_active_at: string | null;
   created_at: string;
@@ -56,10 +57,12 @@ export type AiFeedbackLog = {
 export type WeeklyReport = {
   id: string;
   user_id: string;
+  goal_id: string;
   week_start: string;
   week_end: string;
   total_goals: number;
   expected_checks: number;
+  checkins_count: number;
   success_count: number;
   fail_count: number;
   max_streak: number;
@@ -77,6 +80,7 @@ export type TodayCheckinView = {
   current_streak: number;
   best_streak: number;
   is_active: boolean;
+  created_at: string;
   checkin_id: string | null;
   checkin_date: string | null;
   today_status: CheckinStatus | null;

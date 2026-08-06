@@ -1,0 +1,24 @@
+{
+  "name": "反旗 · FlagBreaker",
+  "short_name": "反旗",
+  "description": "一个嘴毒心软的 AI 损友，盯你把事做完",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#faf9f7",
+  "theme_color": "#FF9F43",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

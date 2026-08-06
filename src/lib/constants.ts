@@ -44,3 +44,6 @@ export const CLEAN_STREAK_DAYS = 7;
 
 // 未成年保护
 export const MINOR_AGE = 18;
+
+// Web Push VAPID public key (from NEXT_PUBLIC_VAPID_PUBLIC_KEY env)
+export const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";

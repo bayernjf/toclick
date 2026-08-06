@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: "class",
   content: [
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -9,32 +10,51 @@ module.exports = {
       colors: {
         // 主色：温暖橙黄，亲和有活力
         brand: {
-          50: "#FFF8EC",
-          100: "#FFEFD3",
-          200: "#FFDDA1",
-          300: "#FFC56E",
-          400: "#FFAD3B",
-          500: "#FF9F43", // 主色
-          600: "#F08A1F",
-          700: "#C76F12",
+          50: "rgb(var(--brand-50) / <alpha-value>)",
+          100: "rgb(var(--brand-100) / <alpha-value>)",
+          200: "rgb(var(--brand-200) / <alpha-value>)",
+          300: "rgb(var(--brand-300) / <alpha-value>)",
+          400: "rgb(var(--brand-400) / <alpha-value>)",
+          500: "rgb(var(--brand-500) / <alpha-value>)",
+          600: "rgb(var(--brand-600) / <alpha-value>)",
+          700: "rgb(var(--brand-700) / <alpha-value>)",
         },
         // 成功：墨绿
         success: {
-          500: "#2E7D5B",
-          600: "#246A4D",
+          50: "rgb(var(--success-50) / <alpha-value>)",
+          100: "rgb(var(--success-100) / <alpha-value>)",
+          200: "rgb(var(--success-200) / <alpha-value>)",
+          300: "rgb(var(--success-300) / <alpha-value>)",
+          400: "rgb(var(--success-400) / <alpha-value>)",
+          500: "rgb(var(--success-500) / <alpha-value>)",
+          600: "rgb(var(--success-600) / <alpha-value>)",
+          700: "rgb(var(--success-700) / <alpha-value>)",
+          800: "rgb(var(--success-800) / <alpha-value>)",
+          900: "rgb(var(--success-900) / <alpha-value>)",
         },
-        // 警示：暖橙（超时用）
+        // 警示：暖橙
         warn: {
-          500: "#E8804A",
+          50: "rgb(var(--warn-50) / <alpha-value>)",
+          100: "rgb(var(--warn-100) / <alpha-value>)",
+          200: "rgb(var(--warn-200) / <alpha-value>)",
+          300: "rgb(var(--warn-300) / <alpha-value>)",
+          400: "rgb(var(--warn-400) / <alpha-value>)",
+          500: "rgb(var(--warn-500) / <alpha-value>)",
+          600: "rgb(var(--warn-600) / <alpha-value>)",
+          700: "rgb(var(--warn-700) / <alpha-value>)",
         },
         // 背景：暖灰，不用纯黑
         ink: {
-          50: "#FAF9F7",
-          100: "#F3F1ED",
-          200: "#E5E1DA",
-          700: "#3D3A36",
-          800: "#2A2825",
-          900: "#1F1D1B",
+          50: "rgb(var(--ink-50) / <alpha-value>)",
+          100: "rgb(var(--ink-100) / <alpha-value>)",
+          200: "rgb(var(--ink-200) / <alpha-value>)",
+          300: "rgb(var(--ink-300) / <alpha-value>)",
+          400: "rgb(var(--ink-400) / <alpha-value>)",
+          500: "rgb(var(--ink-500) / <alpha-value>)",
+          600: "rgb(var(--ink-600) / <alpha-value>)",
+          700: "rgb(var(--ink-700) / <alpha-value>)",
+          800: "rgb(var(--ink-800) / <alpha-value>)",
+          900: "rgb(var(--ink-900) / <alpha-value>)",
         },
       },
       fontFamily: {

@@ -25,10 +25,10 @@ export default function Toast({ message, type = "info", onClose }: Props) {
 
   const bg =
     type === "error"
-      ? "bg-ink-800/90"
+      ? "bg-ink-800/90 dark:bg-ink-200/90"
       : type === "success"
-      ? "bg-success-500/90"
-      : "bg-ink-800/90";
+        ? "bg-success-500/90"
+        : "bg-ink-800/90 dark:bg-ink-200/90";
 
   return (
     <div
