@@ -1,21 +1,42 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { PERSONA_MAP, DEFAULT_PERSONA } from "@/lib/ai/persona";
+import type { PersonaId } from "@/lib/ai/persona";
 import Header from "@/components/Header";
+import ThemeToggle from "@/components/ThemeToggle";
 import Toast from "@/components/Toast";
-import { MINOR_AGE } from "@/lib/constants";
+import { useTheme } from "@/lib/theme";
+import { MINOR_AGE, GOAL_TYPES, DIFFICULTIES } from "@/lib/constants";
+import type { Goal } from "@/lib/types";
+import { usePush } from "@/lib/usePush";
 
 export default function SettingsPage() {
   const router = useRouter();
   const supabase = createSupabaseClient();
+  const { theme, toggleTheme } = useTheme();
+  const {
+    supported: pushSupported,
+    isSubscribed,
+    subscribing,
+    subscribe,
+    unsubscribe,
+  } = usePush();
 
   const [roastEnabled, setRoastEnabled] = useState(true);
   const [age, setAge] = useState(25);
   const [nickname, setNickname] = useState("");
+  const [originalNickname, setOriginalNickname] = useState("");
+  const [persona, setPersona] = useState<PersonaId>(DEFAULT_PERSONA);
   const [loading, setLoading] = useState(true);
+  const [savingName, setSavingName] = useState(false);
+  const [savingAge, setSavingAge] = useState(false);
+  const [editingAge, setEditingAge] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [goals, setGoals] = useState<Goal[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -28,19 +49,58 @@ export default function SettingsPage() {
       }
       const { data } = await supabase
         .from("users")
-        .select("nickname, age, roast_enabled")
+        .select("nickname, age, roast_enabled, persona")
         .eq("id", user.id)
         .single();
 
       if (data) {
         setNickname(data.nickname);
+        setOriginalNickname(data.nickname);
         setAge(data.age);
         setRoastEnabled(data.roast_enabled);
+        setPersona((data.persona as PersonaId) ?? DEFAULT_PERSONA);
       }
       setLoading(false);
     }
     load();
   }, [supabase, router]);
+
+  // Load user's active goals
+  useEffect(() => {
+    async function loadGoals() {
+      const { data } = await supabase
+        .from("goals")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at", { ascending: true });
+      if (data) setGoals(data as Goal[]);
+    }
+    loadGoals();
+  }, [supabase]);
+
+  async function saveNickname() {
+    if (!nickname.trim() || nickname === originalNickname) return;
+    setSavingName(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setSavingName(false);
+      return;
+    }
+    const { error } = await supabase
+      .from("users")
+      .update({ nickname: nickname.trim() })
+      .eq("id", user.id);
+
+    if (error) {
+      setToast("保存失败，重试一下");
+    } else {
+      setOriginalNickname(nickname.trim());
+      setToast("昵称已更新");
+    }
+    setSavingName(false);
+  }
 
   async function toggleRoast(value: boolean) {
     // 未成年强制纯夸夸
@@ -50,17 +110,60 @@ export default function SettingsPage() {
     }
     setRoastEnabled(value);
 
-    const { error } = await supabase.auth.getUser();
-    if (error) return;
-    const userId = (await supabase.auth.getUser()).data.user?.id;
-    if (!userId) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
 
     await supabase
       .from("users")
       .update({ roast_enabled: value })
-      .eq("id", userId);
+      .eq("id", user.id);
 
     setToast(value ? "毒舌模式已开，没做到会被损" : "关了，纯夸夸");
+  }
+
+  async function savePersona(next: PersonaId) {
+    setPersona(next);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase
+      .from("users")
+      .update({ persona: next })
+      .eq("id", user.id);
+    if (error) {
+      setToast("保存失败");
+    }
+  }
+
+  async function saveAge() {
+    if (editingAge === null || editingAge === age) return;
+    if (editingAge < 1 || editingAge > 120 || !Number.isInteger(editingAge)) {
+      setToast("请输入有效年龄");
+      return;
+    }
+    setSavingAge(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setSavingAge(false);
+      return;
+    }
+    const { error } = await supabase
+      .from("users")
+      .update({ age: editingAge })
+      .eq("id", user.id);
+    if (error) {
+      setToast("保存失败，重试一下");
+    } else {
+      setAge(editingAge);
+      setEditingAge(null);
+      setToast("年龄已更新");
+    }
+    setSavingAge(false);
   }
 
   async function handleClearRecords() {
@@ -100,21 +203,107 @@ export default function SettingsPage() {
           <div className="card space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-body">昵称</span>
-              <input
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                className="text-right text-sm bg-transparent focus:outline-none"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                  className="text-right text-sm bg-transparent focus:outline-none w-24"
+                  maxLength={20}
+                />
+                {nickname.trim() !== originalNickname && (
+                  <button
+                    onClick={saveNickname}
+                    disabled={savingName}
+                    className="text-xs text-brand-500 font-medium active:text-brand-600"
+                  >
+                    {savingName ? "保存中…" : "保存"}
+                  </button>
+                )}
+              </div>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-body">年龄</span>
-              <span className="text-sm text-ink-700/70">{age}</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={editingAge ?? age}
+                  onChange={(e) =>
+                    setEditingAge(parseInt(e.target.value, 10) || 0)
+                  }
+                  onBlur={saveAge}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveAge();
+                    if (e.key === "Escape") setEditingAge(null);
+                  }}
+                  min={1}
+                  max={120}
+                  className="text-right text-sm bg-transparent focus:outline-none w-16"
+                />
+                {editingAge !== null && editingAge !== age && (
+                  <button
+                    onClick={saveAge}
+                    disabled={savingAge}
+                    className="text-xs text-brand-500 font-medium active:text-brand-600"
+                  >
+                    {savingAge ? "保存中…" : "保存"}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
           {age < MINOR_AGE && (
             <p className="text-muted mt-2">
               未成年账户（&lt;{MINOR_AGE}岁）强制纯夸夸模式
             </p>
+          )}
+        </section>
+
+        {/* 我的目标 */}
+        <section>
+          <h2 className="text-h2 mb-3">▎我的目标</h2>
+          {goals.length === 0 ? (
+            <div className="card text-center py-6">
+              <p className="text-muted mb-3">还没有目标</p>
+              <Link
+                href="/goals/new"
+                className="btn-secondary inline-flex text-sm"
+              >
+                + 立一个
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {goals.map((g) => (
+                <div
+                  key={g.id}
+                  className="card flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-xl shrink-0">
+                      {GOAL_TYPES[g.goal_type]?.emoji ?? "🎯"}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-body font-medium truncate">
+                        {GOAL_TYPES[g.goal_type]?.label ?? g.goal_type}
+                      </p>
+                      <p className="text-muted text-xs truncate">
+                        {DIFFICULTIES[g.difficulty]?.label ?? g.difficulty}
+                        {" · "}
+                        {g.checkin_time?.slice(0, 5) ?? "未设置"}
+                        {" · 连续 "}
+                        {g.current_streak} 天
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    href={`/goals/${g.id}/edit`}
+                    className="shrink-0 text-sm text-brand-500 font-medium ml-3 active:text-brand-600"
+                  >
+                    编辑
+                  </Link>
+                </div>
+              ))}
+            </div>
           )}
         </section>
 
@@ -148,6 +337,99 @@ export default function SettingsPage() {
           </div>
         </section>
 
+        {/* AI 人设 */}
+        <section>
+          <h2 className="text-h2 mb-3">▎AI 监督员</h2>
+          <div className="space-y-2">
+            {(Object.keys(PERSONA_MAP) as PersonaId[]).map((id) => {
+              const p = PERSONA_MAP[id];
+              const active = persona === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => savePersona(id)}
+                  className={`card w-full text-left flex items-start gap-3 transition-all ${
+                    active
+                      ? "border-brand-500 dark:border-brand-400 bg-brand-50"
+                      : ""
+                  }`}
+                >
+                  <span className="text-2xl pt-0.5">{p.emoji}</span>
+                  <div>
+                    <p
+                      className={`text-body font-semibold ${
+                        active ? "text-brand-700" : "text-ink-900"
+                      }`}
+                    >
+                      {p.label}
+                      {active && (
+                        <span className="ml-2 text-xs text-brand-500 font-normal">
+                          当前
+                        </span>
+                      )}
+                      {p.isPremium && (
+                        <span className="ml-2 text-xs bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 font-normal px-1.5 py-0.5 rounded">
+                          PRO
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-muted mt-0.5">{p.desc}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* 外观 */}
+        <section>
+          <h2 className="text-h2 mb-3">▎外观</h2>
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-body font-medium">深色模式</p>
+                <p className="text-muted mt-1">
+                  当前：{theme === "dark" ? "深色" : "浅色"}
+                </p>
+              </div>
+              <ThemeToggle />
+            </div>
+          </div>
+        </section>
+
+        {/* 推送通知 */}
+        {pushSupported && (
+          <section>
+            <h2 className="text-h2 mb-3">▎推送通知</h2>
+            <div className="card">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-body font-medium">浏览器通知</p>
+                  <p className="text-muted mt-1">
+                    {isSubscribed
+                      ? "到点打卡时会收到提醒"
+                      : "开起后可收到打卡提醒"}
+                  </p>
+                </div>
+                <button
+                  onClick={isSubscribed ? unsubscribe : subscribe}
+                  disabled={subscribing}
+                  className={`relative w-12 h-7 rounded-full transition-colors ${
+                    isSubscribed ? "bg-brand-500" : "bg-ink-200 dark:bg-ink-300"
+                  }`}
+                  aria-label="切换推送通知"
+                >
+                  <span
+                    className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                      isSubscribed ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* 数据 */}
         <section>
           <h2 className="text-h2 mb-3">▎数据</h2>
@@ -157,7 +439,7 @@ export default function SettingsPage() {
               className="w-full flex items-center justify-between text-body"
             >
               <span>查看历史报告</span>
-              <span className="text-ink-700/40">→</span>
+              <span className="text-ink-700/40 dark:text-ink-300/40">→</span>
             </button>
             <div className="border-t border-ink-100" />
             <button
@@ -165,7 +447,7 @@ export default function SettingsPage() {
               className="w-full flex items-center justify-between text-body text-warn-500"
             >
               <span>清空所有失败记录</span>
-              <span className="text-ink-700/40">→</span>
+              <span className="text-ink-700/40 dark:text-ink-300/40">→</span>
             </button>
           </div>
         </section>
@@ -177,18 +459,14 @@ export default function SettingsPage() {
             <p className="text-muted text-xs leading-relaxed">
               AI 反馈为娱乐性内容，不构成对您的人格评价。
             </p>
-            <div className="border-t border-ink-100 my-2" />
+            <div className="border-t border-ink-100 dark:border-ink-200 my-2" />
             <p className="text-body">心理援助热线：12320</p>
-            <p className="text-muted text-xs">
-              全国卫生健康热线，24 小时
-            </p>
+            <p className="text-muted text-xs">全国卫生健康热线，24 小时</p>
           </div>
         </section>
       </div>
 
-      {toast && (
-        <Toast message={toast} onClose={() => setToast(null)} />
-      )}
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </main>
   );
 }

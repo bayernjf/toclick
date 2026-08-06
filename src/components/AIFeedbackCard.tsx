@@ -1,23 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { toPng } from "html-to-image";
+import { PERSONA_MAP, DEFAULT_PERSONA } from "@/lib/ai/persona";
+import type { PersonaId } from "@/lib/ai/persona";
 
 type Props = {
   feedback: string;
   streak?: number;
   milestone?: number | null;
+  persona?: PersonaId;
   onClose: () => void;
   onReact: (reaction: "liked" | "disliked") => void;
+  onNote?: (note: string) => Promise<void>;
 };
 
 export default function AIFeedbackCard({
   feedback,
   streak,
   milestone,
+  persona: personaId = DEFAULT_PERSONA,
   onClose,
   onReact,
+  onNote,
 }: Props) {
   const [reacted, setReacted] = useState<"liked" | "disliked" | null>(null);
+  const p = PERSONA_MAP[personaId] ?? PERSONA_MAP[DEFAULT_PERSONA];
+  const [note, setNote] = useState("");
+  const [noteSaved, setNoteSaved] = useState(false);
+  const [savingNote, setSavingNote] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
+
+  const cardRef = useRef<HTMLDivElement>(null);
 
   function handleReact(r: "liked" | "disliked") {
     if (reacted) return;
@@ -25,15 +39,68 @@ export default function AIFeedbackCard({
     onReact(r);
   }
 
+  async function handleSaveNote() {
+    if (!onNote || !note.trim() || noteSaved) return;
+    setSavingNote(true);
+    try {
+      await onNote(note.trim());
+      setNoteSaved(true);
+    } catch {
+      // silently fail
+    } finally {
+      setSavingNote(false);
+    }
+  }
+
+  async function handleShare() {
+    if (!cardRef.current) return;
+    setShareLoading(true);
+
+    try {
+      const dataUrl = await toPng(cardRef.current, {
+        quality: 0.95,
+        pixelRatio: 2,
+        backgroundColor: document.documentElement.classList.contains("dark")
+          ? "#1a1a1a"
+          : "#f8f8f8",
+      });
+
+      // Try Web Share API first (mobile)
+      if (navigator.share && navigator.canShare) {
+        const blob = await (await fetch(dataUrl)).blob();
+        const file = new File([blob], "flagbreaker-share.png", {
+          type: "image/png",
+        });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file] });
+          return;
+        }
+      }
+
+      // Fallback: download
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `flagbreaker-${new Date().toISOString().slice(0, 10)}.png`;
+      a.click();
+    } catch (e) {
+      console.warn("[AIFeedbackCard] share failed:", e);
+    } finally {
+      setShareLoading(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-ink-50 rounded-t-3xl sm:rounded-3xl p-6 pb-8 animate-in">
+      <div
+        ref={cardRef}
+        className="w-full max-w-md bg-ink-50 dark:bg-ink-150 rounded-t-3xl sm:rounded-3xl p-6 pb-8 animate-in"
+      >
         {/* AI 头像 */}
         <div className="flex flex-col items-center mb-5">
           <div className="w-20 h-20 rounded-full bg-brand-200 flex items-center justify-center text-4xl mb-2">
-            😏
+            {p.emoji}
           </div>
-          <span className="text-sm font-medium text-ink-700">损友</span>
+          <span className="text-sm font-medium text-ink-700">{p.label}</span>
         </div>
 
         {/* 反馈文案（核心） */}
@@ -49,14 +116,44 @@ export default function AIFeedbackCard({
           </p>
         )}
 
+        {/* 打卡感想（可选输入） */}
+        {onNote && (
+          <div className="mb-5">
+            <div className="flex items-center gap-2">
+              <input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="写句感想？（打鸡血专用）"
+                maxLength={200}
+                disabled={noteSaved}
+                className="flex-1 h-11 px-4 rounded-xl bg-white dark:bg-ink-100 border border-ink-100 dark:border-ink-200 text-sm text-ink-700 placeholder:text-ink-700/30 dark:placeholder:text-ink-300/30 focus:outline-none focus:border-brand-300 disabled:bg-ink-50 disabled:text-ink-700/50"
+              />
+              {!noteSaved && note.trim() && (
+                <button
+                  onClick={handleSaveNote}
+                  disabled={savingNote}
+                  className="shrink-0 h-11 px-4 rounded-xl bg-brand-500 text-white text-sm font-medium active:bg-brand-600 disabled:opacity-50"
+                >
+                  {savingNote ? "..." : "保存"}
+                </button>
+              )}
+              {noteSaved && (
+                <span className="shrink-0 text-success-500 text-sm font-medium">
+                  ✓ 已记下
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* 反应按钮 */}
-        <div className="flex justify-center gap-3 mb-6">
+        <div className="flex justify-center gap-3 mb-4">
           <button
             onClick={() => handleReact("liked")}
             className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl transition-colors ${
               reacted === "liked"
                 ? "bg-success-500/20"
-                : "bg-white border border-ink-100 active:bg-ink-100"
+                : "bg-white dark:bg-ink-100 border border-ink-100 dark:border-ink-200 active:bg-ink-100 dark:active:bg-ink-200"
             }`}
           >
             😂
@@ -66,10 +163,21 @@ export default function AIFeedbackCard({
             className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl transition-colors ${
               reacted === "disliked"
                 ? "bg-warn-500/20"
-                : "bg-white border border-ink-100 active:bg-ink-100"
+                : "bg-white dark:bg-ink-100 border border-ink-100 dark:border-ink-200 active:bg-ink-100 dark:active:bg-ink-200"
             }`}
           >
             👎
+          </button>
+        </div>
+
+        {/* 截图分享 */}
+        <div className="flex justify-center mb-4">
+          <button
+            onClick={handleShare}
+            disabled={shareLoading}
+            className="h-10 px-5 rounded-full bg-white dark:bg-ink-100 border border-ink-100 dark:border-ink-200 text-sm font-medium text-ink-600 flex items-center gap-1.5 active:bg-ink-100 dark:active:bg-ink-200 disabled:opacity-50"
+          >
+            {shareLoading ? "生成中…" : "📸 截图分享"}
           </button>
         </div>
 

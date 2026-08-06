@@ -75,7 +75,7 @@ export default function NewGoalPage() {
                   className={`aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 transition-colors ${
                     selected
                       ? "bg-brand-500 text-white border-2 border-brand-500"
-                      : "bg-white border border-ink-100 active:bg-ink-100"
+                      : "bg-white dark:bg-ink-100 border border-ink-100 dark:border-ink-200 active:bg-ink-100 dark:active:bg-ink-200"
                   }`}
                 >
                   <span className="text-3xl">{t.emoji}</span>
@@ -105,16 +105,18 @@ export default function NewGoalPage() {
                   className={`w-full p-4 rounded-xl text-left transition-colors ${
                     selected
                       ? "bg-brand-50 border-2 border-brand-400"
-                      : "bg-white border border-ink-100 active:bg-ink-100"
+                      : "bg-white dark:bg-ink-100 border border-ink-100 dark:border-ink-200 active:bg-ink-100 dark:active:bg-ink-200"
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-ink-800">
+                    <span className="font-semibold text-ink-800 dark:text-ink-200">
                       {d.label}
                     </span>
                     {selected && <span className="text-brand-500">✓</span>}
                   </div>
-                  <p className="text-sm text-ink-700/70 mt-1">{d.desc}</p>
+                  <p className="text-sm text-ink-700/70 dark:text-ink-300/70 mt-1">
+                    {d.desc}
+                  </p>
                 </button>
               );
             })}
@@ -129,7 +131,7 @@ export default function NewGoalPage() {
             type="time"
             value={checkinTime}
             onChange={(e) => setCheckinTime(e.target.value)}
-            className="w-full h-12 px-4 rounded-xl bg-white border border-ink-200 text-base focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+            className="w-full h-12 px-4 rounded-xl bg-white dark:bg-ink-100 border border-ink-200 dark:border-ink-300 text-base focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-100/25"
           />
         </section>
 

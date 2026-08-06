@@ -20,8 +20,7 @@ export default function LoginPage() {
     setLoading(true);
     setToast(null);
 
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -54,7 +53,7 @@ export default function LoginPage() {
 
       <form onSubmit={handleMagicLink} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-ink-800 mb-2">
+          <label className="block text-sm font-medium text-ink-800 dark:text-ink-200 mb-2">
             邮箱
           </label>
           <input
@@ -63,22 +62,18 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
-            className="w-full h-12 px-4 rounded-xl bg-white border border-ink-200 text-base
-                       focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+            className="w-full h-12 px-4 rounded-xl bg-white dark:bg-ink-100 border border-ink-200 dark:border-ink-300 text-base
+                       focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-100/25"
           />
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn-primary"
-        >
+        <button type="submit" disabled={loading} className="btn-primary">
           {loading ? "发送中…" : "发送登录链接"}
         </button>
       </form>
 
       {toast && (
-        <div className="mt-6 p-4 rounded-xl bg-brand-50 border border-brand-100 text-sm text-ink-700">
+        <div className="mt-6 p-4 rounded-xl bg-brand-50 border border-brand-100 dark:border-brand-200 text-sm text-ink-700 dark:text-ink-300">
           {toast}
         </div>
       )}
@@ -86,7 +81,14 @@ export default function LoginPage() {
       <div className="flex-1" />
 
       <p className="text-muted text-center mt-10">
-        登录即同意用户协议与隐私政策
+        登录即同意
+        <Link href="/terms" className="underline underline-offset-2">
+          用户协议
+        </Link>
+        与
+        <Link href="/privacy" className="underline underline-offset-2">
+          隐私政策
+        </Link>
       </p>
     </main>
   );

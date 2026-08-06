@@ -2,52 +2,158 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== Light mode (default) ===== */
 :root {
   color-scheme: light;
+
+  --brand-50: 255 248 236;
+  --brand-100: 255 239 211;
+  --brand-200: 255 221 161;
+  --brand-300: 255 197 110;
+  --brand-400: 255 173 59;
+  --brand-500: 255 159 67;
+  --brand-600: 240 138 31;
+  --brand-700: 199 111 18;
+
+  --success-50: 235 245 240;
+  --success-100: 212 236 225;
+  --success-200: 169 216 195;
+  --success-300: 126 197 165;
+  --success-400: 83 178 135;
+  --success-500: 46 125 91;
+  --success-600: 36 106 77;
+  --success-700: 26 84 61;
+  --success-800: 16 61 45;
+  --success-900: 8 41 30;
+
+  --warn-50: 254 243 237;
+  --warn-100: 253 228 214;
+  --warn-200: 250 200 171;
+  --warn-300: 247 173 128;
+  --warn-400: 240 145 85;
+  --warn-500: 232 128 74;
+  --warn-600: 208 106 53;
+  --warn-700: 168 83 40;
+
+  --ink-50: 250 249 247;
+  --ink-100: 243 241 237;
+  --ink-200: 229 225 218;
+  --ink-300: 196 192 183;
+  --ink-400: 160 156 148;
+  --ink-500: 125 121 114;
+  --ink-600: 93 89 82;
+  --ink-700: 61 58 54;
+  --ink-800: 42 40 37;
+  --ink-900: 31 29 27;
 }
 
+/* ===== Dark mode ===== */
+html.dark {
+  color-scheme: dark;
+
+  --brand-50: 42 36 24;
+  --brand-100: 60 50 32;
+  --brand-200: 90 72 42;
+  --brand-300: 130 100 52;
+  --brand-400: 210 150 48;
+  --brand-500: 255 159 67;
+  --brand-600: 255 180 95;
+  --brand-700: 255 205 135;
+
+  --success-50: 10 35 28;
+  --success-100: 16 55 42;
+  --success-200: 24 80 58;
+  --success-300: 34 100 72;
+  --success-400: 44 120 86;
+  --success-500: 80 170 130;
+  --success-600: 125 195 163;
+  --success-700: 170 215 194;
+  --success-800: 215 236 226;
+  --success-900: 238 247 242;
+
+  --warn-50: 42 30 20;
+  --warn-100: 70 48 32;
+  --warn-200: 120 78 48;
+  --warn-300: 185 115 65;
+  --warn-400: 225 130 70;
+  --warn-500: 232 128 74;
+  --warn-600: 245 160 110;
+  --warn-700: 248 195 155;
+
+  --ink-50: 22 22 20;
+  --ink-100: 35 33 30;
+  --ink-200: 52 49 45;
+  --ink-300: 80 76 70;
+  --ink-400: 118 113 105;
+  --ink-500: 155 150 140;
+  --ink-600: 190 185 175;
+  --ink-700: 220 216 208;
+  --ink-800: 240 237 232;
+  --ink-900: 250 249 247;
+}
+
+/* ===== Base ===== */
 html,
 body {
   height: 100%;
-  /* 暖灰背景，避免纯白刺眼，也避免纯黑压抑 */
-  background-color: #faf9f7;
-  color: #2a2825;
+  background-color: rgb(var(--ink-50));
+  color: rgb(var(--ink-800));
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 移动端容器：最大宽度限制 + 居中，桌面看起来不会过宽 */
+/* ===== Layout ===== */
 .app-container {
-  @apply mx-auto w-full max-w-md min-h-screen bg-ink-50;
-  /* 模拟移动端 app 的边界感 */
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.03);
+  @apply mx-auto w-full max-w-md min-h-screen;
+  background-color: rgb(var(--ink-50));
+  box-shadow: 0 0 0 1px rgb(var(--ink-200) / 0.5);
 }
 
-/* 主 CTA 按钮：高度 ≥ 48px，拇指友好 */
+/* ===== Buttons ===== */
 .btn-primary {
-  @apply w-full h-12 rounded-xl bg-brand-500 text-white font-semibold
+  @apply w-full h-12 rounded-xl font-semibold
          flex items-center justify-center
-         active:bg-brand-600 transition-colors
-         disabled:opacity-50 disabled:active:bg-brand-500;
+         transition-colors
+         disabled:opacity-50;
+  background-color: rgb(var(--brand-500));
+  color: #fff;
+}
+.btn-primary:active {
+  background-color: rgb(var(--brand-600));
+}
+.btn-primary:disabled:active {
+  background-color: rgb(var(--brand-500));
 }
 
 .btn-secondary {
-  @apply w-full h-12 rounded-xl bg-ink-100 text-ink-700 font-medium
+  @apply w-full h-12 rounded-xl font-medium
          flex items-center justify-center
-         active:bg-ink-200 transition-colors;
+         transition-colors;
+  background-color: rgb(var(--ink-100));
+  color: rgb(var(--ink-700));
+}
+.btn-secondary:active {
+  background-color: rgb(var(--ink-200));
 }
 
-/* 卡片：圆角 + 轻阴影 */
+/* ===== Cards ===== */
 .card {
-  @apply bg-white rounded-2xl p-4 shadow-sm border border-ink-100;
+  @apply rounded-2xl p-4 shadow-sm;
+  background-color: #fff;
+  border: 1px solid rgb(var(--ink-100));
+}
+html.dark .card {
+  background-color: rgb(var(--ink-100));
+  border-color: rgb(var(--ink-200));
 }
 
-/* AI 反馈卡片：稍微突出 */
 .card-ai {
-  @apply bg-brand-50 rounded-2xl p-5 shadow-sm border border-brand-100;
+  @apply rounded-2xl p-5 shadow-sm;
+  background-color: rgb(var(--brand-50));
+  border: 1px solid rgb(var(--brand-100));
 }
 
-/* 文字层级 */
+/* ===== Typography ===== */
 .text-h1 {
   @apply text-2xl font-bold leading-tight;
 }
@@ -55,8 +161,10 @@ body {
   @apply text-lg font-semibold;
 }
 .text-body {
-  @apply text-sm text-ink-700;
+  @apply text-sm;
+  color: rgb(var(--ink-700));
 }
 .text-muted {
-  @apply text-xs text-ink-700/60;
+  @apply text-xs;
+  color: rgb(var(--ink-700) / 0.6);
 }
