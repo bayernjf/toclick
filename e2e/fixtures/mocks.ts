@@ -70,6 +70,29 @@ export async function setupMocks(page: Page) {
 
   // ----- Check-in API -----
   await page.route("**/api/checkin", async (route) => {
+    const method = route.request().method();
+    if (method === "POST") {
+      const postData = route.request().postData();
+      let body: Record<string, unknown> = {};
+      try {
+        body = postData ? JSON.parse(postData) : {};
+      } catch {
+        // ignore parse errors
+      }
+      // Skip (rest day) request returns a different shape
+      if (body.skip === true) {
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            ok: true,
+            skipped: true,
+            streak: 3,
+            checkin_id: "ci-skip-001",
+          }),
+        });
+      }
+    }
     return route.fulfill({
       status: 200,
       contentType: "application/json",
