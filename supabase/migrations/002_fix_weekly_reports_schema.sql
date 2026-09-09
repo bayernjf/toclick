@@ -1,3 +1,14 @@
+-- =====================================================
+-- Migration 002: Fix weekly_reports for per-goal reports
+-- File: 002_fix_weekly_reports_schema.sql
+-- Date: 2026-08-07 04:06
+-- Run: Supabase SQL Editor, execute once
+-- =====================================================
+-- Note: Adds goal_id and checkins_count, and replaces the
+--       (user_id, week_start) unique constraint with
+--       (goal_id, week_start) so cron can generate independent
+--       weekly reports per goal.
+-- -----------------------------------------------------
 -- ============================================================
 -- 迁移 002：修复 weekly_reports 表以支持多目标独立周报
 -- 问题：
