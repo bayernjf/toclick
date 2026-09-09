@@ -48,6 +48,26 @@ const MOCK_AI_FEEDBACK_NOTE = {
  * Call this once per test in beforeEach, AFTER loginAsTestUser().
  */
 export async function setupMocks(page: Page) {
+  // ----- Disable Service Worker entirely -----
+  // SWRegister reloads the page on controllerchange, which aborts navigations mid-test.
+  // addInitScript runs before any page script, preventing registration entirely.
+  await page.addInitScript(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register = async () => {
+        throw new Error("Service Worker disabled in E2E tests");
+      };
+      navigator.serviceWorker.getRegistration = async () => undefined;
+      navigator.serviceWorker.getRegistrations = async () => [];
+    }
+  });
+  await page.route("**/sw.js", (route) =>
+    route.fulfill({
+      status: 404,
+      contentType: "text/plain",
+      body: "Not Found",
+    }),
+  );
+
   // ----- Check-in API -----
   await page.route("**/api/checkin", async (route) => {
     return route.fulfill({
