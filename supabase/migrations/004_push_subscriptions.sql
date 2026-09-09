@@ -1,3 +1,12 @@
+-- =====================================================
+-- Migration 004: Add web push subscriptions
+-- File: 004_push_subscriptions.sql
+-- Date: 2026-08-07 04:06
+-- Run: Supabase SQL Editor, execute once
+-- =====================================================
+-- Note: Creates push_subscriptions for browser notification
+--       support, with RLS insert/select/delete for the owner.
+-- -----------------------------------------------------
 -- 004_push_subscriptions.sql
 -- Web Push subscriptions table for browser notification support
 

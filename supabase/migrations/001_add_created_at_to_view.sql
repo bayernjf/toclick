@@ -1,3 +1,12 @@
+-- =====================================================
+-- Migration 001: Add created_at to today check-ins view
+-- File: 001_add_created_at_to_view.sql
+-- Date: 2026-08-07 04:06
+-- Run: Supabase SQL Editor, execute once
+-- =====================================================
+-- Note: v_today_checkins lacked the created_at column the
+--       dashboard sorts on; adds g.created_at to the view.
+-- -----------------------------------------------------
 -- ============================================================
 -- 迁移 001：修复 v_today_checkins 视图缺少 created_at 字段
 -- 问题：Dashboard 用 order("created_at") 排序但视图无此列
