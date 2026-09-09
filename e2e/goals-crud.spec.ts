@@ -15,7 +15,8 @@ test.describe("Goal Edit (authenticated)", () => {
     await page.waitForTimeout(2000);
 
     // The settings page lists active goals with "编辑" links
-    const editLink = page.locator("text=编辑").first();
+    // Use role=link to avoid matching ancestor divs that contain the text
+    const editLink = page.getByRole("link", { name: "编辑" }).first();
     const isVisible = await editLink.isVisible().catch(() => false);
     if (!isVisible) {
       test.skip(true, "No goals with edit links found on settings page");
