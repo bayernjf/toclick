@@ -9,6 +9,7 @@ import { GOAL_TYPES } from "@/lib/constants";
 import { DEFAULT_PERSONA, PERSONA_MAP } from "@/lib/ai/persona";
 import type { PersonaId } from "@/lib/ai/persona";
 import type { WeeklyReport, Checkin, Goal } from "@/lib/types";
+import { todayInAppTz, addDays } from "@/lib/dates";
 
 export default function ReportPage() {
   const router = useRouter();
@@ -60,10 +61,8 @@ export default function ReportPage() {
       setReports(currentWeekReports);
 
       // 取最近 7 天打卡明细（默认最新周）
-      const endDate = all[0]?.week_end ?? new Date().toISOString().slice(0, 10);
-      const startDate =
-        all[0]?.week_start ??
-        new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+      const endDate = all[0]?.week_end ?? todayInAppTz();
+      const startDate = all[0]?.week_start ?? addDays(endDate, -7);
       const { data: chk } = await supabase
         .from("checkins")
         .select("*")

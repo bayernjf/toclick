@@ -12,6 +12,7 @@ import Toast from "@/components/Toast";
 import type { TodayCheckinView } from "@/lib/types";
 import type { PersonaId } from "@/lib/ai/persona";
 import { DEFAULT_PERSONA, PERSONA_MAP } from "@/lib/ai/persona";
+import { todayInAppTz, dayOfWeekInAppTz } from "@/lib/dates";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -136,7 +137,7 @@ export default function DashboardPage() {
             g.goal_id === goalId
               ? {
                   ...g,
-                  checkin_date: new Date().toISOString().slice(0, 10),
+                  checkin_date: todayInAppTz(),
                   today_status: "success",
                 }
               : g,
@@ -212,10 +213,11 @@ export default function DashboardPage() {
     });
   }
 
-  const today = new Date();
-  const dateStr = `${today.getMonth() + 1}月${today.getDate()}日`;
+  const todayStr = todayInAppTz();
+  const [, monthNum, dayNum] = todayStr.split("-").map(Number);
+  const dateStr = `${monthNum}月${dayNum}日`;
   const weekday = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][
-    today.getDay()
+    dayOfWeekInAppTz()
   ];
 
   // 加载用户人设

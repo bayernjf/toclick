@@ -10,6 +10,7 @@ import {
   parseBody,
 } from "@/lib/validations";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { todayInAppTz } from "@/lib/dates";
 
 // POST /api/checkin
 // body: { goal_id: string, skip?: boolean }
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "用户档案缺失" }, { status: 500 });
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInAppTz();
 
   // 检查今天是否已打卡
   const { data: existCheckin } = await supabase
