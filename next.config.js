@@ -4,10 +4,6 @@ const { withSentryConfig } = require("@sentry/nextjs");
 const nextConfig = {
   reactStrictMode: true,
 
-  experimental: {
-    instrumentationHook: true,
-  },
-
   async headers() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
     const extraConnectSrc = supabaseUrl.startsWith("http://localhost")
