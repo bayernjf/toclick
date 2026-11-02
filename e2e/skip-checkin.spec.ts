@@ -10,31 +10,17 @@ test.describe("Skip / Rest Day (authenticated)", () => {
   });
 
   test("skip button renders on goal card", async ({ page }) => {
-    // Wait for goal cards to load
-    await page.waitForTimeout(2000);
-
-    const skipBtn = page.locator("button").filter({ hasText: /休息/ });
-    const count = await skipBtn.count();
-
-    if (count === 0) {
-      test.skip(true, "Skip button not available (may depend on time window)");
-      return;
-    }
-
-    await expect(skipBtn.first()).toBeVisible();
+    // GoalCard 在未打卡目标上固定渲染「🌴 今天休息」，
+    // mock 的 goal-002 永不含今日记录，按钮必然存在。
+    const skipBtn = page.getByRole("button", { name: /休息/ }).first();
+    await expect(skipBtn).toBeVisible({ timeout: 8000 });
   });
 
   test("clicking skip calls API and receives correct response", async ({
     page,
   }) => {
-    await page.waitForTimeout(2000);
-
-    const skipBtn = page.locator("button").filter({ hasText: /休息/ }).first();
-    const count = await skipBtn.count();
-    if (count === 0) {
-      test.skip(true, "Skip button not available");
-      return;
-    }
+    const skipBtn = page.getByRole("button", { name: /休息/ }).first();
+    await expect(skipBtn).toBeVisible({ timeout: 8000 });
 
     // Set up response interception to verify
     const responsePromise = page.waitForResponse(
@@ -54,14 +40,8 @@ test.describe("Skip / Rest Day (authenticated)", () => {
   });
 
   test("shows success toast after skip", async ({ page }) => {
-    await page.waitForTimeout(2000);
-
-    const skipBtn = page.locator("button").filter({ hasText: /休息/ }).first();
-    const count = await skipBtn.count();
-    if (count === 0) {
-      test.skip(true, "Skip button not available");
-      return;
-    }
+    const skipBtn = page.getByRole("button", { name: /休息/ }).first();
+    await expect(skipBtn).toBeVisible({ timeout: 8000 });
 
     await skipBtn.click();
 

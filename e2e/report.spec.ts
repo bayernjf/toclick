@@ -27,35 +27,31 @@ test.describe("Weekly Report (authenticated)", () => {
   });
 
   test("has navigation to switch weeks", async ({ page }) => {
-    await page.waitForTimeout(3000);
-    const navBtn = page
-      .locator("button, a")
-      .filter({ hasText: /<|>|上周|下周|上一期|下一期/ });
-    const count = await navBtn.count();
-    expect(count).toBeGreaterThanOrEqual(0);
+    // mock 提供两周报告（2026-07-13 与 2026-07-20 起），周导航必然渲染；
+    // 断言真实存在并验证切换生效（此前 expect(count >= 0) 恒真）。
+    const prevBtn = page.getByRole("button", { name: "← 上一周" });
+    const nextBtn = page.getByRole("button", { name: "下一周 →" });
+    await expect(prevBtn).toBeVisible({ timeout: 8000 });
+    await expect(nextBtn).toBeVisible();
+
+    await expect(page.getByText(/2026-07-20\s*~\s*2026-07-26/)).toBeVisible();
+    await prevBtn.click();
+    await expect(page.getByText(/2026-07-13\s*~\s*2026-07-19/)).toBeVisible();
+    await nextBtn.click();
+    await expect(page.getByText(/2026-07-20\s*~\s*2026-07-26/)).toBeVisible();
   });
 
-  test("shows AI commentary if report exists", async ({ page }) => {
-    // Mock server returns ai_commentary with specific text
-    await page.waitForTimeout(3000);
-    // The report page may display AI commentary differently; just verify
-    // something report-related is visible
-    const reportContent = page.locator("main");
-    await expect(reportContent).toBeVisible({ timeout: 8000 });
-    // Check for any commentary text
-    const hasCommentary = await page
-      .getByText(/不错|保持|表现|周/)
-      .first()
-      .isVisible()
-      .catch(() => false);
-    expect(hasCommentary || true).toBe(true); // non-blocking check
+  test("shows AI commentary from the report", async ({ page }) => {
+    // mock 的 weekly_reports.ai_comment 原文（形状已与 schema 对齐）
+    await expect(
+      page.getByText("这周表现不错，下周期待你保持！"),
+    ).toBeVisible({ timeout: 8000 });
   });
 
   test("back button returns to dashboard", async ({ page }) => {
     const backBtn = page.getByText("← 返回").first();
-    if (await backBtn.isVisible()) {
-      await backBtn.click();
-      await expect(page).toHaveURL(/\/dashboard/);
-    }
+    await expect(backBtn).toBeVisible({ timeout: 8000 });
+    await backBtn.click();
+    await expect(page).toHaveURL(/\/dashboard/);
   });
 });

@@ -15,13 +15,11 @@ test.describe("Goal Edit (authenticated)", () => {
     await page.waitForTimeout(2000);
 
     // The settings page lists active goals with "编辑" links
-    // Use role=link to avoid matching ancestor divs that contain the text
+    // Use role=link to avoid matching ancestor divs that contain the text.
+    // mock 固定提供 goal-001/goal-002 两个活跃目标，链接必然存在——
+    // 此前的静默 skip 会在链接意外消失时绿掉，改为硬断言。
     const editLink = page.getByRole("link", { name: "编辑" }).first();
-    const isVisible = await editLink.isVisible().catch(() => false);
-    if (!isVisible) {
-      test.skip(true, "No goals with edit links found on settings page");
-      return;
-    }
+    await expect(editLink).toBeVisible({ timeout: 8000 });
 
     await editLink.click();
     await page.waitForURL("**/goals/*/edit", { timeout: 5000 });

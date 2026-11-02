@@ -58,10 +58,11 @@ test.describe("Goal Creation (authenticated)", () => {
     });
 
     // Step 3: set time and submit
+    // goals/new 固定渲染 input[type="time"]，此前的 if-visible 会在
+    // 输入框消失时静默跳过，改为硬断言。
     const timeInput = page.locator('input[type="time"]');
-    if (await timeInput.isVisible()) {
-      await timeInput.fill("08:00");
-    }
+    await expect(timeInput).toBeVisible();
+    await timeInput.fill("08:00");
 
     const submitBtn = page.getByRole("button", {
       name: /立好|开干/i,
@@ -69,15 +70,14 @@ test.describe("Goal Creation (authenticated)", () => {
     await expect(submitBtn).toBeVisible();
     await submitBtn.click();
 
-    // After submission the page should show loading or leave
-    await page.waitForTimeout(2000);
+    // 提交后应跳回 dashboard（mock POST /rest/v1/goals 返回 201）
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 8000 });
   });
 
   test("back button returns to previous page", async ({ page }) => {
     const backBtn = page.getByText("← 返回");
-    if (await backBtn.isVisible()) {
-      await backBtn.click();
-      await expect(page).toHaveURL(/\/dashboard/);
-    }
+    await expect(backBtn).toBeVisible({ timeout: 8000 });
+    await backBtn.click();
+    await expect(page).toHaveURL(/\/dashboard/);
   });
 });

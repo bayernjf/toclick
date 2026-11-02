@@ -33,19 +33,19 @@ test.describe("Settings Page (authenticated)", () => {
   });
 
   test("can save settings", async ({ page }) => {
-    const saveBtn = page.getByRole("button", { name: /保存/i });
-    if (await saveBtn.isVisible()) {
-      await saveBtn.click();
-      await page.waitForTimeout(1000);
-    }
+    // 昵称「保存」按钮（mock PATCH /rest/v1/users 返回 204）；
+    // 此前的 if-visible 会在按钮消失时静默通过，改为硬断言 + 负向校验。
+    const saveBtn = page.getByRole("button", { name: "保存", exact: true }).first();
+    await expect(saveBtn).toBeVisible({ timeout: 8000 });
+    await saveBtn.click();
+    await expect(page.getByText("保存失败")).not.toBeVisible();
   });
 
   test("back button returns to dashboard", async ({ page }) => {
     const backBtn = page.getByText("← 返回").first();
-    if (await backBtn.isVisible()) {
-      await backBtn.click();
-      await expect(page).toHaveURL(/\/dashboard/);
-    }
+    await expect(backBtn).toBeVisible({ timeout: 8000 });
+    await backBtn.click();
+    await expect(page).toHaveURL(/\/dashboard/);
   });
 });
 
