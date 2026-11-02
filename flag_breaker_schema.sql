@@ -302,10 +302,10 @@ SELECT
 FROM public.goals g
 LEFT JOIN public.checkins c
     ON c.goal_id = g.id
-    AND c.checkin_date = CURRENT_DATE
+    AND c.checkin_date = (now() AT TIME ZONE 'Asia/Shanghai')::date
 WHERE g.is_active = TRUE;
 
-COMMENT ON VIEW public.v_today_checkins IS '首页今日打卡看板视图';
+COMMENT ON VIEW public.v_today_checkins IS '首页今日打卡看板视图（"今天"按 Asia/Shanghai，与应用层 dates.ts 一致）';
 
 
 -- ============================================================
@@ -319,12 +319,12 @@ DECLARE
     fail_count INT := 0;
     rec RECORD;
 BEGIN
-    -- 从今天往回数，遇到第一个非 failed 就停
+    -- 从今天（app 时区）往回数，遇到第一个非 failed 就停
     FOR rec IN
         SELECT status
         FROM public.checkins
         WHERE goal_id = p_goal_id
-          AND checkin_date <= CURRENT_DATE
+          AND checkin_date <= (now() AT TIME ZONE 'Asia/Shanghai')::date
         ORDER BY checkin_date DESC
         LIMIT 30  -- 最多看 30 天，防止全表扫描
     LOOP
@@ -339,7 +339,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STABLE;
 
-COMMENT ON FUNCTION public.get_consecutive_fails IS '计算目标连续失败天数，>=3 时触发保护模式';
+COMMENT ON FUNCTION public.get_consecutive_fails IS '计算目标连续失败天数（"今天"按 Asia/Shanghai），>=3 时触发保护模式';
 
 
 -- ============================================================
