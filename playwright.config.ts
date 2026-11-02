@@ -45,6 +45,8 @@ export default defineConfig({
       env: {
         NEXT_PUBLIC_SUPABASE_URL: "http://localhost:19999",
         NEXT_PUBLIC_SUPABASE_ANON_KEY: "mock-anon-key",
+        // /api/cron 的 service-role client 必需（mock server 不校验值）
+        SUPABASE_SERVICE_ROLE_KEY: "mock-service-role-key",
         NEXT_PUBLIC_SITE_URL: BASE_URL,
         // prevent API routes from calling real 豆包
         ARK_API_KEY: "",
