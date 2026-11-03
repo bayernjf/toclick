@@ -115,10 +115,15 @@ const holder = vi.hoisted(() => ({
     from: (table: string) => unknown;
     rpc: () => Promise<{ data: number; error: null }>;
   },
+  // P1-1 fail-closed 用例：置 true 时模拟 service-role 密钥缺失（admin client 构造抛错）
+  throwInit: false,
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
-  createSupabaseAdmin: () => holder.fake,
+  createSupabaseAdmin: () => {
+    if (holder.throwInit) throw new Error("missing SUPABASE_SERVICE_ROLE_KEY");
+    return holder.fake;
+  },
 }));
 
 vi.mock("@/lib/ai/doubao", () => ({
@@ -223,6 +228,7 @@ afterEach(() => {
   delete process.env.CRON_SECRET;
   delete process.env.ARK_API_KEY;
   holder.fake = null;
+  holder.throwInit = false;
 });
 
 describe("POST /api/cron", () => {
@@ -232,6 +238,17 @@ describe("POST /api/cron", () => {
 
     const res = await POST(makeRequest("wrong-secret"));
     expect(res.status).toBe(401);
+  });
+
+  it("service-role 密钥缺失 → 500 fail-closed，绝不静默返回 ok 空跑", async () => {
+    holder.throwInit = true;
+    vi.setSystemTime(new Date("2026-11-09T14:00:00Z"));
+
+    const res = await POST(makeRequest("test-secret"));
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.ok).toBeUndefined();
+    expect(body.error).toContain("misconfigured");
   });
 
   it("周一 22:00 CST：查得到目标、标记失败、生成周报、发出推送", async () => {

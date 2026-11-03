@@ -33,7 +33,18 @@ export async function POST(request: Request) {
   }
 
   // service-role client：cron 无用户会话，anon key + RLS 会恒返回 0 行
-  const supabase = createSupabaseAdmin();
+  let supabase: SupabaseAdmin;
+  try {
+    supabase = createSupabaseAdmin();
+  } catch (e) {
+    // fail-closed：service-role 密钥缺失必须显式 500 报错，
+    // 绝不能静默返回 ok:true 的空跑结果（那等于管线死了还装活着）
+    console.error("cron admin client init failed:", e);
+    return NextResponse.json(
+      { error: "server misconfigured: admin credential missing" },
+      { status: 500 },
+    );
+  }
   const now = new Date();
   const today = todayInAppTz(now);
 
