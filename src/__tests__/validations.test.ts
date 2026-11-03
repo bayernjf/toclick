@@ -5,6 +5,7 @@ import {
   aiFeedbackGetSchema,
   aiFeedbackPatchSchema,
   cronPostSchema,
+  goalUpdateSchema,
   parseBody,
   parseQuery,
 } from "@/lib/validations";
@@ -116,6 +117,36 @@ describe("cronPostSchema", () => {
   });
 });
 
+describe("goalUpdateSchema", () => {
+  const base = {
+    difficulty: "medium",
+    checkin_time: "08:00:00",
+  };
+
+  it("accepts every goal_type allowed by the DB CHECK constraint", () => {
+    for (const goal_type of ["early_rise", "fitness", "study"] as const) {
+      const result = goalUpdateSchema.safeParse({ ...base, goal_type });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it("rejects a goal_type outside the DB CHECK constraint", () => {
+    const result = goalUpdateSchema.safeParse({
+      ...base,
+      goal_type: "hobby",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].path).toEqual(["goal_type"]);
+    }
+  });
+
+  it("rejects an empty goal_type", () => {
+    const result = goalUpdateSchema.safeParse({ ...base, goal_type: "" });
+    expect(result.success).toBe(false);
+  });
+});
+
 describe("parseBody", () => {
   it("returns ok with parsed data on success", () => {
     const result = parseBody(checkinPostSchema, {
@@ -144,7 +175,8 @@ describe("parseBody", () => {
 
 describe("parseQuery", () => {
   it("parses query params from URL", () => {
-    const url = "https://example.com/api/ai-feedback?goal_id=550e8400-e29b-41d4-a716-446655440000&date=2026-07-30";
+    const url =
+      "https://example.com/api/ai-feedback?goal_id=550e8400-e29b-41d4-a716-446655440000&date=2026-07-30";
     const result = parseQuery(aiFeedbackGetSchema, url);
     expect(result.ok).toBe(true);
     if (result.ok) {

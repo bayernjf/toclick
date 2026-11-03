@@ -61,7 +61,11 @@ export type CronPostInput = z.infer<typeof cronPostSchema>;
 // ─── /api/goals ─────────────────────────────────────────────────
 
 export const goalUpdateSchema = z.object({
-  goal_type: z.string().min(1, "Goal type is required"),
+  // 与 flag_breaker_schema.sql 中 goals.goal_type 的 CHECK 约束保持一致
+  goal_type: z.enum(
+    ["early_rise", "fitness", "study"],
+    "goal_type must be one of: early_rise, fitness, study",
+  ),
   difficulty: z.enum(["easy", "medium", "hard"], "Invalid difficulty"),
   checkin_time: z
     .string()
