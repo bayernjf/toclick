@@ -33,12 +33,20 @@ test.describe("Settings Page (authenticated)", () => {
   });
 
   test("can save settings", async ({ page }) => {
-    // 昵称「保存」按钮（mock PATCH /rest/v1/users 返回 204）；
+    // 昵称「保存」按钮只在昵称被修改后出现（page.tsx 的行内编辑设计），
+    // 所以先改昵称再断言按钮出现；mock PATCH /rest/v1/users 返回 204。
     // 此前的 if-visible 会在按钮消失时静默通过，改为硬断言 + 负向校验。
-    const saveBtn = page.getByRole("button", { name: "保存", exact: true }).first();
+    const nameInput = page.locator("input[maxlength='20']").first();
+    await expect(nameInput).toBeVisible({ timeout: 8000 });
+    await nameInput.fill("新昵称");
+    const saveBtn = page
+      .getByRole("button", { name: "保存", exact: true })
+      .first();
     await expect(saveBtn).toBeVisible({ timeout: 8000 });
     await saveBtn.click();
     await expect(page.getByText("保存失败")).not.toBeVisible();
+    // 保存成功后按钮应收起（originalNickname 已更新），这是比"无失败提示"更强的正向信号。
+    await expect(saveBtn).toBeHidden();
   });
 
   test("back button returns to dashboard", async ({ page }) => {
