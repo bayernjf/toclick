@@ -144,7 +144,7 @@ export async function POST(request: Request) {
   const newBest = Math.max(goal.best_streak, newStreak);
   const newTotal = goal.total_checkins + 1;
 
-  await supabase
+  const { error: goalUpdateErr } = await supabase
     .from("goals")
     .update({
       current_streak: newStreak,
@@ -152,6 +152,15 @@ export async function POST(request: Request) {
       total_checkins: newTotal,
     })
     .eq("id", goalId);
+
+  if (goalUpdateErr) {
+    // checkins 已落库但冗余统计未更新：不能静默吞掉，否则连胜/累计永久漂移
+    console.error("[api/checkin] update goal stats error:", goalUpdateErr);
+    return NextResponse.json(
+      { error: "打卡已记录，但目标统计更新失败" },
+      { status: 500 },
+    );
+  }
 
   // 触发洗白：连续达标 CLEAN_STREAK_DAYS 天，清空该目标的 failed 记录
   let cleaned = false;
