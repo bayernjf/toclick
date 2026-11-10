@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import type { Goal } from "@/lib/types";
+import { todayInAppTz, addDays } from "@/lib/dates";
 
 // POST /api/checkin/sync
 // Dashboard 加载时调用：自动补填昨天缺失的失败记录
@@ -15,10 +16,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const now = new Date();
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().slice(0, 10);
+  const yesterdayStr = addDays(todayInAppTz(), -1);
 
   // 查询当前用户的活跃目标
   const { data: goals } = await supabase
@@ -63,7 +61,7 @@ export async function POST(request: Request) {
     if (insertErr) {
       console.error(
         `sync failed for goal=${goal.id} date=${yesterdayStr}:`,
-        insertErr.message
+        insertErr.message,
       );
       continue;
     }

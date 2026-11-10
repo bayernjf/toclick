@@ -15,17 +15,17 @@
     "prepare": "husky install"
   },
   "dependencies": {
-    "@sentry/nextjs": "^10.69.0",
+    "@sentry/nextjs": "^10.78.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.4",
     "@types/web-push": "^3.6.4",
-    "@vercel/og": "^0.11.1",
+    "@vercel/og": "^1.0.3",
     "html-to-image": "^1.11.13",
-    "next": "14.2.33",
+    "next": "^15.5.28",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "web-push": "^3.6.7",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.0",
@@ -34,7 +34,7 @@
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.0",
-    "eslint-config-next": "14.2.33",
+    "eslint-config-next": "^15.5.28",
     "husky": "^8.0.0",
     "lint-staged": "^16.4.0",
     "postcss": "^8.4.47",

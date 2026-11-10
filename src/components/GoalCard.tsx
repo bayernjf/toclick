@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { GOAL_TYPES, DIFFICULTIES } from "@/lib/constants";
 import type { TodayCheckinView } from "@/lib/types";
+import { todayInAppTz, msUntilDeadlineInAppTz } from "@/lib/dates";
 
 type Props = {
   goal: TodayCheckinView;
@@ -21,18 +22,14 @@ export default function GoalCard({ goal, onCheckin, onSkip }: Props) {
   const meta = GOAL_TYPES[goal.goal_type];
   const diff = DIFFICULTIES[goal.difficulty];
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInAppTz();
   const hasCheckedToday = goal.checkin_date === today;
   const isDone = hasCheckedToday && goal.today_status === "success";
   const isFailed = hasCheckedToday && goal.today_status === "failed";
   const isSkipped = hasCheckedToday && goal.today_status === "skipped";
 
-  // 计算距离打卡时间还差多少（仅展示，不阻塞打卡）
-  const [hh, mm] = goal.checkin_time.split(":");
-  const now = new Date();
-  const target = new Date();
-  target.setHours(Number(hh), Number(mm), 0, 0);
-  const diffMs = target.getTime() - now.getTime();
+  // 计算距离打卡时间还差多少（仅展示，不阻塞打卡）；与服务端同一时区判定
+  const diffMs = msUntilDeadlineInAppTz(goal.checkin_time);
   const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
 
   async function handleCheckinClick() {

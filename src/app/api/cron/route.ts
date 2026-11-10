@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServer } from "@/lib/supabase/server";
+import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { generateAiFeedback } from "@/lib/ai/doubao";
 import type { PersonaId } from "@/lib/ai/persona";
 import { GOAL_TYPES, PROTECTION_MODE_THRESHOLD } from "@/lib/constants";
 import type { Goal, User, AiUserState } from "@/lib/types";
 import { cronPostSchema, parseBody } from "@/lib/validations";
 import { broadcastPush } from "@/lib/push";
+import {
+  todayInAppTz,
+  isPastDeadlineInAppTz,
+  dayOfWeekInAppTz,
+  lastWeekBoundsInAppTz,
+} from "@/lib/dates";
+
+type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 
 // POST /api/cron
 // 由 Supabase pg_cron / Vercel Cron / 外部定时任务 调用
@@ -24,9 +32,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createSupabaseServer();
-  const today = new Date().toISOString().slice(0, 10);
+  // service-role client：cron 无用户会话，anon key + RLS 会恒返回 0 行
+  let supabase: SupabaseAdmin;
+  try {
+    supabase = createSupabaseAdmin();
+  } catch (e) {
+    // fail-closed：service-role 密钥缺失必须显式 500 报错，
+    // 绝不能静默返回 ok:true 的空跑结果（那等于管线死了还装活着）
+    console.error("cron admin client init failed:", e);
+    return NextResponse.json(
+      { error: "server misconfigured: admin credential missing" },
+      { status: 500 },
+    );
+  }
   const now = new Date();
+  const today = todayInAppTz(now);
 
   // 2. 查询所有活跃目标
   const { data: goals } = await supabase
@@ -47,6 +67,8 @@ export async function POST(request: Request) {
     goal_id: string;
     status: "skipped" | "failed" | "error";
     detail: string;
+    user_id?: string;
+    goal_type?: string;
     ai_feedback?: string | null;
   }> = [];
 
@@ -77,12 +99,8 @@ export async function POST(request: Request) {
         continue;
       }
 
-      // 检查打卡时间是否已过
-      const [hh, mm] = goal.checkin_time.split(":");
-      const deadline = new Date();
-      deadline.setHours(Number(hh), Number(mm), 0, 0);
-
-      if (now <= deadline) {
+      // 检查打卡时间是否已过（app 时区判定，避免服务器 UTC 提前 ~8h 误标）
+      if (!isPastDeadlineInAppTz(goal.checkin_time, now)) {
         // 打卡时间还没到，不标记失败
         results.push({
           goal_id: goal.id,
@@ -167,6 +185,8 @@ export async function POST(request: Request) {
         goal_id: goal.id,
         status: "failed" as const,
         detail: `marked failed, consecutive_fails=${consecutiveFail}`,
+        user_id: goal.user_id,
+        goal_type: goal.goal_type,
         ai_feedback: aiText,
       });
     } catch (e) {
@@ -180,17 +200,10 @@ export async function POST(request: Request) {
 
   const failedCount = results.filter((r) => r.status === "failed").length;
 
-  // 4. 周一 → 自动生成上周周报
+  // 4. 周一（app 时区）→ 自动生成上周周报
   let weeklyReportsGenerated = 0;
-  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon
-  if (dayOfWeek === 1) {
-    const weekEnd = new Date(now);
-    weekEnd.setDate(weekEnd.getDate() - 1); // yesterday (Sunday)
-    const weekStart = new Date(weekEnd);
-    weekStart.setDate(weekStart.getDate() - 6); // previous Monday
-
-    const start = weekStart.toISOString().slice(0, 10);
-    const end = weekEnd.toISOString().slice(0, 10);
+  if (dayOfWeekInAppTz(now) === 1) {
+    const { start, end } = lastWeekBoundsInAppTz(now);
 
     weeklyReportsGenerated = await generateWeeklyReports(
       supabase,
@@ -218,7 +231,7 @@ export async function POST(request: Request) {
 
 // 为所有活跃目标生成上周周报
 async function generateWeeklyReports(
-  supabase: Awaited<ReturnType<typeof createSupabaseServer>>,
+  supabase: SupabaseAdmin,
   weekStart: string,
   weekEnd: string,
   goals: Goal[],
@@ -324,7 +337,7 @@ async function generateWeeklyReports(
 
 // 查询某目标连续失败天数（调用数据库函数）
 async function getConsecutiveFails(
-  supabase: Awaited<ReturnType<typeof createSupabaseServer>>,
+  supabase: SupabaseAdmin,
   goalId: string,
 ): Promise<number> {
   const { data } = await supabase.rpc("get_consecutive_fails", {
@@ -335,7 +348,7 @@ async function getConsecutiveFails(
 
 // Send push notification to users whose goals were marked as "failed" today
 async function sendFailedPushNotifications(
-  supabase: Awaited<ReturnType<typeof createSupabaseServer>>,
+  supabase: SupabaseAdmin,
   results: Array<{
     goal_id: string;
     status: string;

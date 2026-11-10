@@ -14,10 +14,27 @@ import type { Page } from "@playwright/test";
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-function encodeSessionCookie(session: Record<string, unknown>): string {
+export function encodeSessionCookie(session: Record<string, unknown>): string {
   // @supabase/ssr 0.5.x expects base64url-encoded cookie values with "base64-" prefix
   const base64url = Buffer.from(JSON.stringify(session)).toString("base64url");
   return `base64-${base64url}`;
+}
+
+/** 直接构造登录 cookie 头（API 层测试用，不经浏览器） */
+export function authCookieHeader(): string {
+  return `sb-localhost-auth-token=${encodeSessionCookie({
+    access_token: "mock-access-token",
+    token_type: "bearer",
+    expires_in: 3600,
+    expires_at: Math.floor(Date.now() / 1000) + 3600,
+    refresh_token: "mock-refresh-token",
+    user: {
+      id: MOCK_USER_ID,
+      email: "test@example.com",
+      role: "authenticated",
+      aud: "authenticated",
+    },
+  })}`;
 }
 
 /* ------------------------------------------------------------------ */

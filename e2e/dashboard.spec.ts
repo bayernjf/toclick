@@ -44,8 +44,12 @@ test.describe("Check-in Flow", () => {
   });
 
   test("check-in button triggers AI feedback modal", async ({ page }) => {
-    const checkinBtn = page.locator("button", { hasText: /签到|打卡/ }).first();
-    if (!(await checkinBtn.isVisible())) return;
+    // 真实按钮文案见 GoalCard：「✓ 提前打了」/「✓ 打了」/「⚠ 超时了，赶紧补打」
+    // （此前用 /签到|打卡/ 匹配不到任何按钮，配合静默 return 等于没测）
+    const checkinBtn = page
+      .getByRole("button", { name: /打了|补打/ })
+      .first();
+    await expect(checkinBtn).toBeVisible({ timeout: 8000 });
     await checkinBtn.click();
     await expect(page.getByText(MOCK_AI_FEEDBACK.feedback).first()).toBeVisible(
       { timeout: 5000 },
@@ -53,33 +57,40 @@ test.describe("Check-in Flow", () => {
   });
 
   test("can react to AI feedback", async ({ page }) => {
-    const checkinBtn = page.locator("button", { hasText: /签到|打卡/ }).first();
-    if (!(await checkinBtn.isVisible())) return;
+    const checkinBtn = page
+      .getByRole("button", { name: /打了|补打/ })
+      .first();
+    await expect(checkinBtn).toBeVisible({ timeout: 8000 });
     await checkinBtn.click();
     await expect(page.getByText(MOCK_AI_FEEDBACK.feedback).first()).toBeVisible(
       { timeout: 5000 },
     );
 
-    const reactionBtns = page.locator(
-      '[class*="flex gap"], [class*="reaction"], [class*="emoji"] button',
-    );
-    const count = await reactionBtns.count();
-    expect(count).toBeGreaterThanOrEqual(0);
+    // AIFeedbackCard 的反应按钮：😂 / 👎（断言真实存在并可点击）
+    const likedBtn = page.getByRole("button", { name: "😂", exact: true });
+    const dislikedBtn = page.getByRole("button", { name: "👎", exact: true });
+    await expect(likedBtn).toBeVisible();
+    await expect(dislikedBtn).toBeVisible();
+    await likedBtn.click();
   });
 
   test("can dismiss AI feedback modal", async ({ page }) => {
-    const checkinBtn = page.locator("button", { hasText: /签到|打卡/ }).first();
-    if (!(await checkinBtn.isVisible())) return;
+    const checkinBtn = page
+      .getByRole("button", { name: /打了|补打/ })
+      .first();
+    await expect(checkinBtn).toBeVisible({ timeout: 8000 });
     await checkinBtn.click();
     await expect(page.getByText(MOCK_AI_FEEDBACK.feedback).first()).toBeVisible(
       { timeout: 5000 },
     );
 
-    const closeBtn = page.locator("button", { hasText: /关闭|✕|❌|×/ });
-    if (await closeBtn.isVisible()) {
-      await closeBtn.click();
-      await page.waitForTimeout(500);
-    }
+    // AIFeedbackCard 的关闭按钮文案是「知道了」
+    const closeBtn = page.getByRole("button", { name: "知道了" });
+    await expect(closeBtn).toBeVisible();
+    await closeBtn.click();
+    await expect(
+      page.getByText(MOCK_AI_FEEDBACK.feedback),
+    ).not.toBeVisible({ timeout: 5000 });
   });
 });
 

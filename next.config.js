@@ -4,15 +4,15 @@ const { withSentryConfig } = require("@sentry/nextjs");
 const nextConfig = {
   reactStrictMode: true,
 
-  experimental: {
-    instrumentationHook: true,
-  },
-
   async headers() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
     const extraConnectSrc = supabaseUrl.startsWith("http://localhost")
       ? " " + supabaseUrl
       : "";
+    // Next dev 的 webpack 使用 eval-source-map，需要 'unsafe-eval'；
+    // 生产构建（next build / next start）不需要，故只在开发环境保留。
+    const scriptSrcEval =
+      process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
     return [
       {
         source: "/(.*)",
@@ -26,7 +26,7 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              `script-src 'self' 'unsafe-inline'${scriptSrcEval}`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self'",

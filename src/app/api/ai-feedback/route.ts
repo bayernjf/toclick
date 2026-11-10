@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { generateAiFeedback } from "@/lib/ai/doubao";
 import type { PersonaId } from "@/lib/ai/persona";
-import { GOAL_TYPES } from "@/lib/constants";
+import { GOAL_TYPES, PROTECTION_MODE_THRESHOLD } from "@/lib/constants";
 import type { Goal, User, AiUserState } from "@/lib/types";
 import {
   aiFeedbackGetSchema,
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
   if (!checkRateLimit(`aigen:${user.id}`, 5, 60_000)) {
     return NextResponse.json(
       { error: "操作太频繁，请稍后再试" },
-      { status: 429 }
+      { status: 429 },
     );
   }
 
@@ -81,11 +81,21 @@ export async function GET(request: Request) {
     .eq("id", user.id)
     .single<User>();
 
-  // 计算连续失败数
-  const { data: consecutiveFail } = await supabase.rpc(
-    "get_consecutive_fails",
-    { p_goal_id: goalId }
-  );
+  // 计算连续失败数。RPC 失败时绝不能按"连续失败=1"处理——
+  // 那会绕过 PROTECTION_MODE_THRESHOLD 保护模式，把毒舌文案发给该被保护的用户。
+  // 因此失败时按保守阈值处理，并记录错误供排查。
+  const { data: consecutiveFail, error: consecutiveFailErr } =
+    await supabase.rpc("get_consecutive_fails", { p_goal_id: goalId });
+
+  let consecutiveFailCount = PROTECTION_MODE_THRESHOLD;
+  if (consecutiveFailErr) {
+    console.error(
+      "[api/ai-feedback] get_consecutive_fails rpc error:",
+      consecutiveFailErr,
+    );
+  } else if (typeof consecutiveFail === "number") {
+    consecutiveFailCount = consecutiveFail;
+  }
 
   const scenario = `${GOAL_TYPES[goal.goal_type].label}今日未完成`;
 
@@ -94,7 +104,7 @@ export async function GET(request: Request) {
     goal_type: goal.goal_type,
     difficulty: goal.difficulty,
     streak: 0,
-    consecutive_fail: (consecutiveFail as number) ?? 1,
+    consecutive_fail: consecutiveFailCount,
     age: profile?.age ?? 0,
     roast_enabled: profile?.roast_enabled ?? true,
   };

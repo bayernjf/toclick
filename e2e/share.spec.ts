@@ -15,23 +15,13 @@ test.describe("Screenshot Share (authenticated)", () => {
   });
 
   test("share button appears after check-in feedback", async ({ page }) => {
-    // Click the check-in button to trigger AI feedback modal
-    const checkinButton = page.getByText("✓ 打了").first();
-    const isVisible = await checkinButton.isVisible().catch(() => false);
-    if (!isVisible) {
-      // Try other checkin button texts
-      const altButton = page.locator("button").filter({
-        hasText: /打了|提前打了|补打/,
-      });
-      const count = await altButton.count();
-      if (count === 0) {
-        test.skip(true, "No check-in button available in current time window");
-        return;
-      }
-      await altButton.first().click();
-    } else {
-      await checkinButton.click();
-    }
+    // GoalCard 在未打卡时固定渲染打卡按钮（打了/提前打了/补打），
+    // mock 的 goal-002 永不含今日记录，按钮必然存在。
+    const checkinButton = page
+      .getByRole("button", { name: /打了|提前打了|补打/ })
+      .first();
+    await expect(checkinButton).toBeVisible({ timeout: 8000 });
+    await checkinButton.click();
 
     // Wait for AI feedback modal to appear
     await expect(page.getByText("📸 截图分享")).toBeVisible({
@@ -41,15 +31,11 @@ test.describe("Screenshot Share (authenticated)", () => {
 
   test("share button clicks without error", async ({ page }) => {
     // Trigger check-in
-    const btn = page.locator("button").filter({
-      hasText: /打了|提前打了|补打/,
-    });
-    const count = await btn.count();
-    if (count === 0) {
-      test.skip(true, "No check-in button available");
-      return;
-    }
-    await btn.first().click();
+    const btn = page
+      .getByRole("button", { name: /打了|提前打了|补打/ })
+      .first();
+    await expect(btn).toBeVisible({ timeout: 8000 });
+    await btn.click();
 
     // Wait for share button
     await expect(page.getByText("📸 截图分享")).toBeVisible({
